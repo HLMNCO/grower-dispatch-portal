@@ -1,0 +1,1 @@
+ALTER TABLE public.dispatches ADD COLUMN truck_number text;

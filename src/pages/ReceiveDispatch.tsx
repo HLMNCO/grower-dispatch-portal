@@ -26,6 +26,7 @@ interface DispatchDetail {
   status: string;
   notes: string | null;
   photos: string[] | null;
+  truck_number: string | null;
 }
 
 interface ItemRow {
@@ -153,10 +154,11 @@ export default function ReceiveDispatch() {
 
       <div className="container py-6 max-w-4xl space-y-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           {[
             { icon: FileText, label: 'Con Note', value: dispatch.con_note_number },
             { icon: Truck, label: 'Carrier', value: dispatch.carrier || '-' },
+            { icon: Truck, label: 'Truck/Rego', value: dispatch.truck_number || '-' },
             { icon: Package, label: 'Pallets', value: dispatch.total_pallets.toString() },
             { icon: Package, label: 'Total Qty', value: totalQty.toString() },
           ].map(card => (

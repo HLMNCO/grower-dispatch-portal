@@ -25,6 +25,7 @@ export default function SupplierDispatchForm() {
   const [growerCode, setGrowerCode] = useState('');
   const [conNote, setConNote] = useState('');
   const [carrier, setCarrier] = useState('');
+  const [truckNumber, setTruckNumber] = useState('');
   const [dispatchDate, setDispatchDate] = useState<Date>();
   const [expectedArrival, setExpectedArrival] = useState<Date>();
   const [totalPallets, setTotalPallets] = useState('');
@@ -91,6 +92,7 @@ export default function SupplierDispatchForm() {
         expected_arrival: expectedArrival ? format(expectedArrival, 'yyyy-MM-dd') : null,
         con_note_number: conNote,
         carrier: carrier || null,
+        truck_number: truckNumber || null,
         total_pallets: parseInt(totalPallets) || 0,
         notes,
         photos,
@@ -196,6 +198,10 @@ export default function SupplierDispatchForm() {
             <div className="space-y-2">
               <Label htmlFor="carrier">Carrier / Transport</Label>
               <Input id="carrier" value={carrier} onChange={e => setCarrier(e.target.value)} placeholder="e.g. Cool Chain Logistics" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="truckNumber">Truck / Rego Number</Label>
+              <Input id="truckNumber" value={truckNumber} onChange={e => setTruckNumber(e.target.value)} placeholder="e.g. ABC-123" />
             </div>
             <div className="space-y-2">
               <Label>Dispatch Date *</Label>
