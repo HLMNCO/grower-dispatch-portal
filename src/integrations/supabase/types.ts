@@ -70,6 +70,7 @@ export type Database = {
           grower_name: string
           id: string
           notes: string | null
+          photos: string[] | null
           status: string
           supplier_id: string
           total_pallets: number
@@ -86,6 +87,7 @@ export type Database = {
           grower_name: string
           id?: string
           notes?: string | null
+          photos?: string[] | null
           status?: string
           supplier_id: string
           total_pallets?: number
@@ -102,6 +104,7 @@ export type Database = {
           grower_name?: string
           id?: string
           notes?: string | null
+          photos?: string[] | null
           status?: string
           supplier_id?: string
           total_pallets?: number
@@ -150,6 +153,7 @@ export type Database = {
           flagged_by: string | null
           id: string
           issue_type: string
+          photo_url: string | null
           severity: string
         }
         Insert: {
@@ -159,6 +163,7 @@ export type Database = {
           flagged_by?: string | null
           id?: string
           issue_type: string
+          photo_url?: string | null
           severity?: string
         }
         Update: {
@@ -168,6 +173,7 @@ export type Database = {
           flagged_by?: string | null
           id?: string
           issue_type?: string
+          photo_url?: string | null
           severity?: string
         }
         Relationships: [
