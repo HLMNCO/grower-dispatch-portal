@@ -1,0 +1,217 @@
+import { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { format } from 'date-fns';
+import { ArrowLeft, CheckCircle2, AlertTriangle, Plus, Send, Package, Truck, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { StatusBadge } from '@/components/StatusBadge';
+import { mockDispatches } from '@/data/mockDispatches';
+import { ReceivingIssue, ISSUE_TYPES } from '@/types/dispatch';
+import { toast } from '@/hooks/use-toast';
+
+export default function ReceiveDispatch() {
+  const { id } = useParams<{ id: string }>();
+  const dispatch = mockDispatches.find(d => d.id === id);
+
+  const [issues, setIssues] = useState<ReceivingIssue[]>(dispatch?.issues || []);
+  const [showAddIssue, setShowAddIssue] = useState(false);
+  const [newIssue, setNewIssue] = useState<Partial<ReceivingIssue>>({ severity: 'medium' });
+
+  if (!dispatch) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-muted-foreground">Dispatch not found.</p>
+          <Link to="/"><Button variant="outline">Back to Dashboard</Button></Link>
+        </div>
+      </div>
+    );
+  }
+
+  const addIssue = () => {
+    if (!newIssue.type || !newIssue.description) return;
+    setIssues([...issues, newIssue as ReceivingIssue]);
+    setNewIssue({ severity: 'medium' });
+    setShowAddIssue(false);
+  };
+
+  const handleReceive = () => {
+    toast({
+      title: issues.length > 0 ? 'Stock Received with Issues' : 'Stock Received',
+      description: issues.length > 0
+        ? `${dispatch.id} received. ${issues.length} issue(s) flagged — POD sent to ${dispatch.growerName}.`
+        : `${dispatch.id} received successfully. POD confirmation sent to ${dispatch.growerName}.`,
+    });
+  };
+
+  const totalQty = dispatch.items.reduce((s, i) => s + i.quantity, 0);
+  const totalWeight = dispatch.items.reduce((s, i) => s + (i.weight || 0), 0);
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-card sticky top-0 z-10">
+        <div className="container py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link to="/">
+              <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
+            </Link>
+            <div className="h-6 w-px bg-border" />
+            <div>
+              <h1 className="text-lg font-display tracking-tight">{dispatch.id}</h1>
+              <p className="text-xs text-muted-foreground">{dispatch.growerName}</p>
+            </div>
+          </div>
+          <StatusBadge status={dispatch.status} />
+        </div>
+      </header>
+
+      <div className="container py-6 max-w-4xl space-y-6">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { icon: FileText, label: 'Con Note', value: dispatch.conNoteNumber },
+            { icon: Truck, label: 'Carrier', value: dispatch.carrier },
+            { icon: Package, label: 'Pallets', value: dispatch.totalPallets.toString() },
+            { icon: Package, label: 'Total Qty', value: totalQty.toString() },
+          ].map(card => (
+            <div key={card.label} className="p-4 rounded-lg border border-border bg-card">
+              <card.icon className="h-4 w-4 text-muted-foreground mb-1" />
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">{card.label}</p>
+              <p className="font-display text-sm mt-1">{card.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Dates */}
+        <div className="flex gap-6 text-sm text-muted-foreground">
+          <span>Dispatched: <strong className="text-foreground">{format(new Date(dispatch.dispatchDate), 'dd MMM yyyy')}</strong></span>
+          <span>ETA: <strong className="text-foreground">{format(new Date(dispatch.expectedArrival), 'dd MMM yyyy')}</strong></span>
+        </div>
+
+        {/* Product Lines */}
+        <section className="space-y-3">
+          <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">Product Lines</h2>
+          <div className="rounded-lg border border-border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50">
+                  <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Product</th>
+                  <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Variety</th>
+                  <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Size</th>
+                  <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Pack</th>
+                  <th className="text-right p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Qty</th>
+                  <th className="text-right p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Weight</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dispatch.items.map((item, i) => (
+                  <tr key={i} className="border-t border-border">
+                    <td className="p-3 font-medium">{item.product}</td>
+                    <td className="p-3 text-muted-foreground">{item.variety}</td>
+                    <td className="p-3">{item.size}</td>
+                    <td className="p-3">{item.trayType}</td>
+                    <td className="p-3 text-right font-display">{item.quantity}</td>
+                    <td className="p-3 text-right text-muted-foreground">{item.weight ? `${item.weight}kg` : '-'}</td>
+                  </tr>
+                ))}
+                <tr className="border-t border-border bg-muted/30">
+                  <td colSpan={4} className="p-3 font-display text-xs uppercase tracking-wider text-muted-foreground">Total</td>
+                  <td className="p-3 text-right font-display font-bold">{totalQty}</td>
+                  <td className="p-3 text-right font-display text-muted-foreground">{totalWeight ? `${totalWeight}kg` : '-'}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Notes */}
+        {dispatch.notes && (
+          <section className="space-y-2">
+            <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">Grower Notes</h2>
+            <p className="p-4 rounded-lg bg-card border border-border text-sm">{dispatch.notes}</p>
+          </section>
+        )}
+
+        {/* Issues */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" /> Issues & Claims
+            </h2>
+            <Button variant="outline" size="sm" onClick={() => setShowAddIssue(!showAddIssue)}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> Flag Issue
+            </Button>
+          </div>
+
+          {showAddIssue && (
+            <div className="p-4 rounded-lg border border-border bg-card space-y-3 animate-slide-in">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Issue Type</Label>
+                  <Select value={newIssue.type} onValueChange={v => setNewIssue({ ...newIssue, type: v as ReceivingIssue['type'] })}>
+                    <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                    <SelectContent>{ISSUE_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Severity</Label>
+                  <Select value={newIssue.severity} onValueChange={v => setNewIssue({ ...newIssue, severity: v as ReceivingIssue['severity'] })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea value={newIssue.description || ''} onChange={e => setNewIssue({ ...newIssue, description: e.target.value })} placeholder="Describe the issue in detail..." rows={2} />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" size="sm" onClick={() => setShowAddIssue(false)}>Cancel</Button>
+                <Button size="sm" variant="destructive" onClick={addIssue}>Add Issue</Button>
+              </div>
+            </div>
+          )}
+
+          {issues.length > 0 ? (
+            <div className="space-y-2">
+              {issues.map((issue, i) => (
+                <div key={i} className="p-4 rounded-lg border border-destructive/20 bg-destructive/5 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{ISSUE_TYPES.find(t => t.value === issue.type)?.label}</span>
+                    <span className={`text-xs font-display uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                      issue.severity === 'high' ? 'bg-destructive/20 text-destructive' :
+                      issue.severity === 'medium' ? 'bg-warning/20 text-warning-foreground' :
+                      'bg-muted text-muted-foreground'
+                    }`}>{issue.severity}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{issue.description}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground p-4 border border-dashed border-border rounded-lg text-center">No issues flagged.</p>
+          )}
+        </section>
+
+        {/* Actions */}
+        <div className="flex gap-3 pt-4 border-t border-border">
+          <Button onClick={handleReceive} size="lg" className="flex-1 font-display tracking-wide">
+            <CheckCircle2 className="h-4 w-4 mr-2" /> Confirm Received
+          </Button>
+          {issues.length > 0 && (
+            <Button variant="outline" size="lg" className="font-display tracking-wide">
+              <Send className="h-4 w-4 mr-2" /> Send POD to Grower
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
