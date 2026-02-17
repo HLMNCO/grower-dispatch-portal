@@ -14,6 +14,7 @@ import { DispatchItem, PRODUCE_CATEGORIES, TRAY_TYPES, SIZES } from '@/types/dis
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { PhotoUpload } from '@/components/PhotoUpload';
 
 const emptyItem: DispatchItem = { product: '', variety: '', size: '', trayType: '', quantity: 0 };
 
@@ -29,6 +30,7 @@ export default function SupplierDispatchForm() {
   const [totalPallets, setTotalPallets] = useState('');
   const [items, setItems] = useState<DispatchItem[]>([{ ...emptyItem }]);
   const [notes, setNotes] = useState('');
+  const [photos, setPhotos] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const addItem = () => setItems([...items, { ...emptyItem }]);
@@ -60,6 +62,7 @@ export default function SupplierDispatchForm() {
         carrier: carrier || null,
         total_pallets: parseInt(totalPallets) || 0,
         notes,
+        photos,
       })
       .select('id')
       .single();
@@ -218,6 +221,13 @@ export default function SupplierDispatchForm() {
           <Button type="button" variant="outline" onClick={addItem} className="w-full border-dashed">
             <Plus className="h-4 w-4 mr-2" /> Add Product Line
           </Button>
+        </section>
+
+        {/* Photos */}
+        <section className="space-y-4">
+          <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">Photos</h2>
+          <p className="text-xs text-muted-foreground">Attach photos of your con note, produce condition, or pallet setup.</p>
+          <PhotoUpload photos={photos} onPhotosChange={setPhotos} folder="dispatch" max={8} />
         </section>
 
         {/* Notes */}

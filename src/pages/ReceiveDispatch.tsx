@@ -11,6 +11,7 @@ import { ISSUE_TYPES } from '@/types/dispatch';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { PhotoUpload } from '@/components/PhotoUpload';
 
 interface DispatchDetail {
   id: string;
@@ -24,6 +25,7 @@ interface DispatchDetail {
   total_pallets: number;
   status: string;
   notes: string | null;
+  photos: string[] | null;
 }
 
 interface ItemRow {
@@ -41,6 +43,7 @@ interface IssueRow {
   issue_type: string;
   description: string;
   severity: string;
+  photo_url: string | null;
 }
 
 export default function ReceiveDispatch() {
@@ -54,6 +57,7 @@ export default function ReceiveDispatch() {
   const [newIssueType, setNewIssueType] = useState('');
   const [newIssueSeverity, setNewIssueSeverity] = useState('medium');
   const [newIssueDesc, setNewIssueDesc] = useState('');
+  const [newIssuePhotos, setNewIssuePhotos] = useState<string[]>([]);
 
   useEffect(() => {
     if (id) fetchAll();
@@ -80,6 +84,7 @@ export default function ReceiveDispatch() {
       description: newIssueDesc,
       severity: newIssueSeverity,
       flagged_by: user.id,
+      photo_url: newIssuePhotos[0] || null,
     }).select().single();
 
     if (error) {
@@ -90,6 +95,7 @@ export default function ReceiveDispatch() {
     setNewIssueType('');
     setNewIssueDesc('');
     setNewIssueSeverity('medium');
+    setNewIssuePhotos([]);
     setShowAddIssue(false);
 
     // Update dispatch status to 'issue' if needed
@@ -209,6 +215,20 @@ export default function ReceiveDispatch() {
           </div>
         </section>
 
+        {/* Dispatch Photos */}
+        {dispatch.photos && dispatch.photos.length > 0 && (
+          <section className="space-y-2">
+            <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">Dispatch Photos</h2>
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {dispatch.photos.map((url, i) => (
+                <div key={i} className="aspect-square rounded-lg overflow-hidden border border-border">
+                  <img src={url} alt={`Dispatch photo ${i + 1}`} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Notes */}
         {dispatch.notes && (
           <section className="space-y-2">
@@ -256,6 +276,10 @@ export default function ReceiveDispatch() {
                 <Label>Description</Label>
                 <Textarea value={newIssueDesc} onChange={e => setNewIssueDesc(e.target.value)} placeholder="Describe the issue in detail..." rows={2} />
               </div>
+              <div className="space-y-2">
+                <Label>Photo Evidence</Label>
+                <PhotoUpload photos={newIssuePhotos} onPhotosChange={setNewIssuePhotos} folder="issues" max={3} compact />
+              </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="ghost" size="sm" onClick={() => setShowAddIssue(false)}>Cancel</Button>
                 <Button size="sm" variant="destructive" onClick={addIssue}>Add Issue</Button>
@@ -276,6 +300,9 @@ export default function ReceiveDispatch() {
                     }`}>{issue.severity}</span>
                   </div>
                   <p className="text-sm text-muted-foreground">{issue.description}</p>
+                  {issue.photo_url && (
+                    <img src={issue.photo_url} alt="Issue evidence" className="mt-2 rounded-lg max-h-40 object-cover border border-border" />
+                  )}
                 </div>
               ))}
             </div>
