@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Package, Truck } from 'lucide-react';
+import { Package, Truck, Navigation } from 'lucide-react';
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ export default function AuthPage() {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [role, setRole] = useState<'supplier' | 'staff'>('supplier');
+  const [role, setRole] = useState<'supplier' | 'staff' | 'transporter'>('supplier');
 
   // Business info
   const [businessName, setBusinessName] = useState('');
@@ -61,7 +61,7 @@ export default function AuthPage() {
       password: signupPassword,
       options: {
         emailRedirectTo: window.location.origin,
-        data: { display_name: displayName, role: role === 'supplier' ? 'supplier' : 'staff' },
+        data: { display_name: displayName, role: role === 'staff' ? 'staff' : role === 'transporter' ? 'transporter' : 'supplier' },
       },
     });
 
@@ -75,7 +75,7 @@ export default function AuthPage() {
     const { data: business, error: bizError } = await supabase.from('businesses').insert({
       owner_id: authData.user.id,
       name: businessName,
-      business_type: role === 'supplier' ? 'supplier' : 'receiver',
+      business_type: role === 'staff' ? 'receiver' : role === 'transporter' ? 'transporter' : 'supplier',
       abn: abn || null,
       city: city || null,
       state: state || null,
@@ -147,18 +147,24 @@ export default function AuthPage() {
                 {/* Role Selection */}
                 <div className="space-y-2">
                   <Label>I am a...</Label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <button type="button" onClick={() => setRole('staff')}
                       className={`p-3 rounded-lg border text-left text-sm transition-all ${role === 'staff' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/30'}`}>
                       <Package className="h-4 w-4 mb-1 text-primary" />
-                      <div className="font-medium">Receiver / Agent</div>
-                      <div className="text-xs text-muted-foreground">Wholesale, receive & distribute</div>
+                      <div className="font-medium">Receiver</div>
+                      <div className="text-xs text-muted-foreground">Wholesale, receive</div>
                     </button>
                     <button type="button" onClick={() => setRole('supplier')}
                       className={`p-3 rounded-lg border text-left text-sm transition-all ${role === 'supplier' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/30'}`}>
                       <Truck className="h-4 w-4 mb-1 text-primary" />
-                      <div className="font-medium">Supplier / Grower</div>
-                      <div className="text-xs text-muted-foreground">Grow & dispatch produce</div>
+                      <div className="font-medium">Supplier</div>
+                      <div className="text-xs text-muted-foreground">Grow & dispatch</div>
+                    </button>
+                    <button type="button" onClick={() => setRole('transporter')}
+                      className={`p-3 rounded-lg border text-left text-sm transition-all ${role === 'transporter' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/30'}`}>
+                      <Navigation className="h-4 w-4 mb-1 text-primary" />
+                      <div className="font-medium">Transporter</div>
+                      <div className="text-xs text-muted-foreground">Carry & deliver</div>
                     </button>
                   </div>
                 </div>
@@ -172,12 +178,12 @@ export default function AuthPage() {
                 {/* Business Info */}
                 <div className="p-4 rounded-lg border border-border bg-muted/30 space-y-3">
                   <h3 className="font-display text-xs uppercase tracking-widest text-muted-foreground">
-                    {role === 'staff' ? 'Business Details' : 'Farm / Business Details'}
+                    {role === 'staff' ? 'Business Details' : role === 'transporter' ? 'Transport Company Details' : 'Farm / Business Details'}
                   </h3>
                   <div className="space-y-2">
-                    <Label>{role === 'staff' ? 'Business Name *' : 'Farm / Business Name *'}</Label>
+                    <Label>{role === 'staff' ? 'Business Name *' : role === 'transporter' ? 'Company Name *' : 'Farm / Business Name *'}</Label>
                     <Input value={businessName} onChange={e => setBusinessName(e.target.value)} required
-                      placeholder={role === 'staff' ? 'e.g. Metro Fresh Wholesale' : 'e.g. Valley Fresh Farms'} />
+                      placeholder={role === 'staff' ? 'e.g. Metro Fresh Wholesale' : role === 'transporter' ? 'e.g. Swift Freight Logistics' : 'e.g. Valley Fresh Farms'} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">

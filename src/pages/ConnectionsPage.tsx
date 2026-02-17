@@ -34,6 +34,7 @@ export default function ConnectionsPage() {
 
   const isSupplier = role === 'supplier' || business?.business_type === 'supplier';
   const isReceiver = role === 'staff' || business?.business_type === 'receiver';
+  const isTransporter = role === 'transporter' || business?.business_type === 'transporter';
 
   useEffect(() => {
     if (business) fetchConnections();
@@ -42,33 +43,52 @@ export default function ConnectionsPage() {
   const fetchConnections = async () => {
     if (!business) return;
     
-    const field = isSupplier ? 'supplier_business_id' : 'receiver_business_id';
-    const { data: conns } = await supabase
-      .from('connections')
-      .select('*')
-      .eq(field, business.id);
+    let conns: ConnectionRow[] = [];
+    
+    if (isTransporter) {
+      // Transporters can be on either side of a connection
+      const { data: asSupplier } = await supabase
+        .from('connections')
+        .select('*')
+        .eq('supplier_business_id', business.id);
+      const { data: asReceiver } = await supabase
+        .from('connections')
+        .select('*')
+        .eq('receiver_business_id', business.id);
+      conns = [...(asSupplier || []), ...(asReceiver || [])] as ConnectionRow[];
+    } else {
+      const field = isSupplier ? 'supplier_business_id' : 'receiver_business_id';
+      const { data } = await supabase
+        .from('connections')
+        .select('*')
+        .eq(field, business.id);
+      conns = (data || []) as ConnectionRow[];
+    }
 
-    if (conns) {
-      setConnections(conns as ConnectionRow[]);
+    setConnections(conns);
 
-      // Fetch the connected businesses
-      const otherField = isSupplier ? 'receiver_business_id' : 'supplier_business_id';
-      const ids = conns.map(c => (c as any)[otherField]);
-      if (ids.length > 0) {
-        const { data: bizData } = await supabase
-          .from('businesses')
-          .select('id, name, business_type, city, state, region')
-          .in('id', ids);
-        if (bizData) setConnectedBusinesses(bizData as BusinessRow[]);
-      }
+    // Fetch the connected businesses
+    const ids = conns.map(c => {
+      if (c.supplier_business_id === business.id) return c.receiver_business_id;
+      return c.supplier_business_id;
+    });
+    const uniqueIds = [...new Set(ids)];
+    if (uniqueIds.length > 0) {
+      const { data: bizData } = await supabase
+        .from('businesses')
+        .select('id, name, business_type, city, state, region')
+        .in('id', uniqueIds);
+      if (bizData) setConnectedBusinesses(bizData as BusinessRow[]);
     }
     setLoading(false);
   };
 
-  const searchReceivers = async () => {
+  const [searchType, setSearchType] = useState<'supplier' | 'receiver'>('supplier');
+
+  const searchBusinesses = async () => {
     if (!search.trim()) return;
     setSearching(true);
-    const targetType = isSupplier ? 'receiver' : 'supplier';
+    const targetType = isTransporter ? searchType : (isSupplier ? 'receiver' : 'supplier');
     const { data } = await supabase
       .from('businesses')
       .select('id, name, business_type, city, state, region')
@@ -83,9 +103,21 @@ export default function ConnectionsPage() {
   const requestConnection = async (targetId: string) => {
     if (!business) return;
 
-    const payload = isSupplier
-      ? { supplier_business_id: business.id, receiver_business_id: targetId }
-      : { supplier_business_id: targetId, receiver_business_id: business.id };
+    const targetBiz = results.find(r => r.id === targetId);
+    let payload: { supplier_business_id: string; receiver_business_id: string };
+
+    if (isTransporter) {
+      // Transporter goes on whichever side matches the target type
+      if (targetBiz?.business_type === 'supplier') {
+        payload = { supplier_business_id: targetId, receiver_business_id: business.id };
+      } else {
+        payload = { supplier_business_id: business.id, receiver_business_id: targetId };
+      }
+    } else if (isSupplier) {
+      payload = { supplier_business_id: business.id, receiver_business_id: targetId };
+    } else {
+      payload = { supplier_business_id: targetId, receiver_business_id: business.id };
+    }
 
     const { error } = await supabase.from('connections').insert(payload);
     if (error) {
@@ -109,8 +141,7 @@ export default function ConnectionsPage() {
   };
 
   const getConnectionStatus = (bizId: string) => {
-    const field = isSupplier ? 'receiver_business_id' : 'supplier_business_id';
-    return connections.find(c => (c as any)[field] === bizId);
+    return connections.find(c => c.supplier_business_id === bizId || c.receiver_business_id === bizId);
   };
 
   if (loading) {
@@ -122,20 +153,30 @@ export default function ConnectionsPage() {
       {/* Search */}
       <div className="space-y-3">
         <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">
-          Find {isSupplier ? 'Receivers / Agents' : 'Suppliers / Growers'}
+          Find {isTransporter ? 'Suppliers or Receivers' : isSupplier ? 'Receivers / Agents' : 'Suppliers / Growers'}
         </h2>
+        {isTransporter && (
+          <div className="flex gap-2">
+            <Button size="sm" variant={searchType === 'supplier' ? 'default' : 'outline'} onClick={() => setSearchType('supplier')}>
+              Suppliers
+            </Button>
+            <Button size="sm" variant={searchType === 'receiver' ? 'default' : 'outline'} onClick={() => setSearchType('receiver')}>
+              Receivers
+            </Button>
+          </div>
+        )}
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder={`Search ${isSupplier ? 'receivers' : 'suppliers'} by name...`}
+              placeholder={`Search ${isTransporter ? searchType + 's' : isSupplier ? 'receivers' : 'suppliers'} by name...`}
               value={search}
               onChange={e => setSearch(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && searchReceivers()}
+              onKeyDown={e => e.key === 'Enter' && searchBusinesses()}
               className="pl-10"
             />
           </div>
-          <Button onClick={searchReceivers} disabled={searching}>
+          <Button onClick={searchBusinesses} disabled={searching}>
             {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
           </Button>
         </div>
@@ -176,15 +217,16 @@ export default function ConnectionsPage() {
         )}
       </div>
 
-      {/* Pending requests (receiver view) */}
-      {isReceiver && connections.filter(c => c.status === 'pending').length > 0 && (
+      {/* Pending requests (receiver/transporter view) */}
+      {(isReceiver || isTransporter) && connections.filter(c => c.status === 'pending').length > 0 && (
         <div className="space-y-3">
           <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">
             Pending Requests
           </h2>
           <div className="space-y-2">
             {connections.filter(c => c.status === 'pending').map(conn => {
-              const biz = connectedBusinesses.find(b => b.id === conn.supplier_business_id);
+              const otherId = conn.supplier_business_id === business?.id ? conn.receiver_business_id : conn.supplier_business_id;
+              const biz = connectedBusinesses.find(b => b.id === otherId);
               return (
                 <div key={conn.id} className="p-4 rounded-lg border border-accent/30 bg-accent/5 flex items-center justify-between">
                   <div>
@@ -216,16 +258,16 @@ export default function ConnectionsPage() {
       {/* Connected */}
       <div className="space-y-3">
         <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">
-          Connected {isSupplier ? 'Receivers' : 'Suppliers'} ({connections.filter(c => c.status === 'approved').length})
+          Connected Partners ({connections.filter(c => c.status === 'approved').length})
         </h2>
         {connections.filter(c => c.status === 'approved').length === 0 ? (
           <p className="p-4 text-sm text-muted-foreground border border-dashed border-border rounded-lg text-center">
-            No connections yet. Search above to find and connect with {isSupplier ? 'receivers' : 'suppliers'}.
+            No connections yet. Search above to find and connect with partners.
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {connections.filter(c => c.status === 'approved').map(conn => {
-              const otherId = isSupplier ? conn.receiver_business_id : conn.supplier_business_id;
+              const otherId = conn.supplier_business_id === business?.id ? conn.receiver_business_id : conn.supplier_business_id;
               const biz = connectedBusinesses.find(b => b.id === otherId);
               return (
                 <div key={conn.id} className="p-4 rounded-lg border border-border bg-card">

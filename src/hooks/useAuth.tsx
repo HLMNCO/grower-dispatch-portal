@@ -5,14 +5,14 @@ import type { User, Session } from '@supabase/supabase-js';
 interface Business {
   id: string;
   name: string;
-  business_type: 'receiver' | 'supplier';
+  business_type: 'receiver' | 'supplier' | 'transporter';
 }
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  role: 'staff' | 'supplier' | null;
+  role: 'staff' | 'supplier' | 'transporter' | null;
   business: Business | null;
   signOut: () => Promise<void>;
   refreshBusiness: () => Promise<void>;
@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [role, setRole] = useState<'staff' | 'supplier' | null>(null);
+  const [role, setRole] = useState<'staff' | 'supplier' | 'transporter' | null>(null);
   const [business, setBusiness] = useState<Business | null>(null);
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select('role')
       .eq('user_id', userId)
       .maybeSingle();
-    setRole((data?.role as 'staff' | 'supplier') ?? null);
+    setRole((data?.role as 'staff' | 'supplier' | 'transporter') ?? null);
   };
 
   const fetchBusiness = async (userId: string) => {

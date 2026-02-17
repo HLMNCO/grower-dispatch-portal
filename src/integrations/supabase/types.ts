@@ -164,11 +164,15 @@ export type Database = {
           id: string
           notes: string | null
           photos: string[] | null
+          pickup_time: string | null
           receiver_business_id: string | null
           status: string
           supplier_business_id: string | null
           supplier_id: string
+          temperature_reading: number | null
           total_pallets: number
+          transporter_business_id: string | null
+          transporter_notes: string | null
           truck_number: string | null
           updated_at: string
         }
@@ -184,11 +188,15 @@ export type Database = {
           id?: string
           notes?: string | null
           photos?: string[] | null
+          pickup_time?: string | null
           receiver_business_id?: string | null
           status?: string
           supplier_business_id?: string | null
           supplier_id: string
+          temperature_reading?: number | null
           total_pallets?: number
+          transporter_business_id?: string | null
+          transporter_notes?: string | null
           truck_number?: string | null
           updated_at?: string
         }
@@ -204,11 +212,15 @@ export type Database = {
           id?: string
           notes?: string | null
           photos?: string[] | null
+          pickup_time?: string | null
           receiver_business_id?: string | null
           status?: string
           supplier_business_id?: string | null
           supplier_id?: string
+          temperature_reading?: number | null
           total_pallets?: number
+          transporter_business_id?: string | null
+          transporter_notes?: string | null
           truck_number?: string | null
           updated_at?: string
         }
@@ -223,6 +235,13 @@ export type Database = {
           {
             foreignKeyName: "dispatches_supplier_business_id_fkey"
             columns: ["supplier_business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatches_transporter_business_id_fkey"
+            columns: ["transporter_business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
             referencedColumns: ["id"]
