@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { CalendarIcon, Plus, Trash2, Send, Truck } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Send, Truck, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,10 +12,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { DispatchItem, PRODUCE_CATEGORIES, TRAY_TYPES, SIZES } from '@/types/dispatch';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 const emptyItem: DispatchItem = { product: '', variety: '', size: '', trayType: '', quantity: 0 };
 
 export default function SupplierDispatchForm() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [growerName, setGrowerName] = useState('');
   const [growerCode, setGrowerCode] = useState('');
   const [conNote, setConNote] = useState('');
@@ -24,6 +29,7 @@ export default function SupplierDispatchForm() {
   const [totalPallets, setTotalPallets] = useState('');
   const [items, setItems] = useState<DispatchItem[]>([{ ...emptyItem }]);
   const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const addItem = () => setItems([...items, { ...emptyItem }]);
   const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
@@ -35,12 +41,61 @@ export default function SupplierDispatchForm() {
 
   const totalQuantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user || !dispatchDate) return;
+
+    setSubmitting(true);
+
+    // Insert dispatch
+    const { data: dispatch, error: dispatchError } = await supabase
+      .from('dispatches')
+      .insert({
+        supplier_id: user.id,
+        grower_name: growerName,
+        grower_code: growerCode || null,
+        dispatch_date: format(dispatchDate, 'yyyy-MM-dd'),
+        expected_arrival: expectedArrival ? format(expectedArrival, 'yyyy-MM-dd') : null,
+        con_note_number: conNote,
+        carrier: carrier || null,
+        total_pallets: parseInt(totalPallets) || 0,
+        notes,
+      })
+      .select('id')
+      .single();
+
+    if (dispatchError || !dispatch) {
+      toast({ title: 'Error', description: dispatchError?.message || 'Failed to create dispatch', variant: 'destructive' });
+      setSubmitting(false);
+      return;
+    }
+
+    // Insert items
+    const itemRows = items
+      .filter(i => i.product)
+      .map(i => ({
+        dispatch_id: dispatch.id,
+        product: i.product,
+        variety: i.variety,
+        size: i.size,
+        tray_type: i.trayType,
+        quantity: i.quantity,
+        weight: i.weight || null,
+      }));
+
+    if (itemRows.length > 0) {
+      const { error: itemsError } = await supabase.from('dispatch_items').insert(itemRows);
+      if (itemsError) {
+        toast({ title: 'Warning', description: 'Dispatch created but some items failed to save.' });
+      }
+    }
+
+    setSubmitting(false);
     toast({
       title: 'Dispatch Submitted',
-      description: `Con Note ${conNote} has been submitted successfully. Your agent will be notified.`,
+      description: `Con Note ${conNote} has been submitted. Your agent will be notified.`,
     });
+    navigate('/');
   };
 
   return (
@@ -52,6 +107,7 @@ export default function SupplierDispatchForm() {
               <Truck className="h-5 w-5 text-primary-foreground" />
             </div>
             <h1 className="text-2xl font-display tracking-tight">Dispatch Advice</h1>
+            <span className="ml-auto text-xs font-display text-muted-foreground tracking-wider">FRESHDOCK</span>
           </div>
           <p className="text-muted-foreground">Submit your dispatch details so we can plan receiving and get your produce to market faster.</p>
         </div>
@@ -170,8 +226,8 @@ export default function SupplierDispatchForm() {
           <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Special handling instructions, ripeness notes, etc." rows={3} />
         </section>
 
-        <Button type="submit" size="lg" className="w-full font-display tracking-wide">
-          <Send className="h-4 w-4 mr-2" /> Submit Dispatch Advice
+        <Button type="submit" size="lg" className="w-full font-display tracking-wide" disabled={submitting}>
+          <Send className="h-4 w-4 mr-2" /> {submitting ? 'Submitting...' : 'Submit Dispatch Advice'}
         </Button>
       </form>
     </div>

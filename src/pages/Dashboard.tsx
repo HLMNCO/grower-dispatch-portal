@@ -1,43 +1,76 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Package, Truck, AlertTriangle, CheckCircle2, Clock, ArrowRight, Search, Filter } from 'lucide-react';
+import { Package, Truck, AlertTriangle, CheckCircle2, Clock, ArrowRight, Search, Filter, LogOut } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
-import { mockDispatches } from '@/data/mockDispatches';
-import { Dispatch } from '@/types/dispatch';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+
+interface DispatchRow {
+  id: string;
+  display_id: string;
+  grower_name: string;
+  grower_code: string | null;
+  con_note_number: string;
+  carrier: string | null;
+  dispatch_date: string;
+  expected_arrival: string | null;
+  total_pallets: number;
+  status: string;
+  notes: string | null;
+  created_at: string;
+}
 
 const statCards = [
-  { label: 'Pending', icon: Clock, filterStatus: 'pending' as const },
-  { label: 'In Transit', icon: Truck, filterStatus: 'in-transit' as const },
-  { label: 'Arrived', icon: Package, filterStatus: 'arrived' as const },
-  { label: 'Issues', icon: AlertTriangle, filterStatus: 'issue' as const },
-  { label: 'Received', icon: CheckCircle2, filterStatus: 'received' as const },
+  { label: 'Pending', icon: Clock, filterStatus: 'pending' },
+  { label: 'In Transit', icon: Truck, filterStatus: 'in-transit' },
+  { label: 'Arrived', icon: Package, filterStatus: 'arrived' },
+  { label: 'Issues', icon: AlertTriangle, filterStatus: 'issue' },
+  { label: 'Received', icon: CheckCircle2, filterStatus: 'received' },
 ];
 
 export default function Dashboard() {
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<Dispatch['status'] | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dispatches, setDispatches] = useState<DispatchRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { role, signOut } = useAuth();
   const navigate = useNavigate();
 
-  const filtered = mockDispatches.filter(d => {
-    const matchesSearch = !search || 
-      d.growerName.toLowerCase().includes(search.toLowerCase()) ||
-      d.conNoteNumber.toLowerCase().includes(search.toLowerCase()) ||
-      d.id.toLowerCase().includes(search.toLowerCase());
+  useEffect(() => {
+    fetchDispatches();
+  }, []);
+
+  const fetchDispatches = async () => {
+    const { data, error } = await supabase
+      .from('dispatches')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setDispatches(data as DispatchRow[]);
+    }
+    setLoading(false);
+  };
+
+  const filtered = dispatches.filter(d => {
+    const matchesSearch = !search ||
+      d.grower_name.toLowerCase().includes(search.toLowerCase()) ||
+      d.con_note_number.toLowerCase().includes(search.toLowerCase()) ||
+      d.display_id.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'all' || d.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const counts = mockDispatches.reduce((acc, d) => {
+  const counts = dispatches.reduce((acc, d) => {
     acc[d.status] = (acc[d.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border bg-card sticky top-0 z-10">
         <div className="container py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -45,14 +78,24 @@ export default function Dashboard() {
               <Package className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-lg font-display tracking-tight">Dispatch Control</h1>
-              <p className="text-xs text-muted-foreground">Inbound receiving & validation</p>
+              <h1 className="text-lg font-display tracking-tight">FRESHDOCK</h1>
+              <p className="text-xs text-muted-foreground">{role === 'staff' ? 'Dispatch Control' : 'My Dispatches'}</p>
             </div>
           </div>
           <div className="flex gap-2">
+            {role === 'supplier' && (
+              <Link to="/dispatch">
+                <Button size="sm" className="font-display tracking-wide">
+                  <Truck className="h-4 w-4 mr-1" /> New Dispatch
+                </Button>
+              </Link>
+            )}
             <Link to="/dispatch">
               <Button variant="outline" size="sm">Supplier Form</Button>
             </Link>
+            <Button variant="ghost" size="sm" onClick={signOut}>
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </header>
@@ -100,54 +143,58 @@ export default function Dashboard() {
         </div>
 
         {/* Dispatch Table */}
-        <div className="rounded-lg border border-border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-muted/50">
-                  <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">ID</th>
-                  <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Grower</th>
-                  <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Con Note</th>
-                  <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Dispatch</th>
-                  <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">ETA</th>
-                  <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Items</th>
-                  <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Pallets</th>
-                  <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Status</th>
-                  <th className="p-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(dispatch => (
-                  <tr
-                    key={dispatch.id}
-                    className="border-t border-border hover:bg-muted/30 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/receive/${dispatch.id}`)}
-                  >
-                    <td className="p-3 font-display text-xs">{dispatch.id}</td>
-                    <td className="p-3">
-                      <div className="font-medium">{dispatch.growerName}</div>
-                      <div className="text-xs text-muted-foreground">{dispatch.growerCode}</div>
-                    </td>
-                    <td className="p-3 font-display text-xs">{dispatch.conNoteNumber}</td>
-                    <td className="p-3 text-muted-foreground">{format(new Date(dispatch.dispatchDate), 'dd MMM')}</td>
-                    <td className="p-3 text-muted-foreground">{format(new Date(dispatch.expectedArrival), 'dd MMM')}</td>
-                    <td className="p-3">{dispatch.items.length} lines</td>
-                    <td className="p-3">{dispatch.totalPallets}</td>
-                    <td className="p-3"><StatusBadge status={dispatch.status} /></td>
-                    <td className="p-3">
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                    </td>
+        {loading ? (
+          <div className="text-center py-12 text-muted-foreground">Loading dispatches...</div>
+        ) : (
+          <div className="rounded-lg border border-border overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-muted/50">
+                    <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">ID</th>
+                    <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Grower</th>
+                    <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Con Note</th>
+                    <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Dispatch</th>
+                    <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">ETA</th>
+                    <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Pallets</th>
+                    <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Status</th>
+                    <th className="p-3"></th>
                   </tr>
-                ))}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="p-8 text-center text-muted-foreground">No dispatches found.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filtered.map(dispatch => (
+                    <tr
+                      key={dispatch.id}
+                      className="border-t border-border hover:bg-muted/30 cursor-pointer transition-colors"
+                      onClick={() => navigate(`/receive/${dispatch.id}`)}
+                    >
+                      <td className="p-3 font-display text-xs">{dispatch.display_id}</td>
+                      <td className="p-3">
+                        <div className="font-medium">{dispatch.grower_name}</div>
+                        <div className="text-xs text-muted-foreground">{dispatch.grower_code || '-'}</div>
+                      </td>
+                      <td className="p-3 font-display text-xs">{dispatch.con_note_number}</td>
+                      <td className="p-3 text-muted-foreground">{format(new Date(dispatch.dispatch_date), 'dd MMM')}</td>
+                      <td className="p-3 text-muted-foreground">{dispatch.expected_arrival ? format(new Date(dispatch.expected_arrival), 'dd MMM') : '-'}</td>
+                      <td className="p-3">{dispatch.total_pallets}</td>
+                      <td className="p-3"><StatusBadge status={dispatch.status as any} /></td>
+                      <td className="p-3">
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      </td>
+                    </tr>
+                  ))}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                        {dispatches.length === 0 ? 'No dispatches yet. Submit your first dispatch!' : 'No dispatches match your search.'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

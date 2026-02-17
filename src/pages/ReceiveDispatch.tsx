@@ -1,24 +1,117 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ArrowLeft, CheckCircle2, AlertTriangle, Plus, Send, Package, Truck, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/StatusBadge';
-import { mockDispatches } from '@/data/mockDispatches';
-import { ReceivingIssue, ISSUE_TYPES } from '@/types/dispatch';
+import { ISSUE_TYPES } from '@/types/dispatch';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+
+interface DispatchDetail {
+  id: string;
+  display_id: string;
+  grower_name: string;
+  grower_code: string | null;
+  con_note_number: string;
+  carrier: string | null;
+  dispatch_date: string;
+  expected_arrival: string | null;
+  total_pallets: number;
+  status: string;
+  notes: string | null;
+}
+
+interface ItemRow {
+  id: string;
+  product: string;
+  variety: string | null;
+  size: string | null;
+  tray_type: string | null;
+  quantity: number;
+  weight: number | null;
+}
+
+interface IssueRow {
+  id: string;
+  issue_type: string;
+  description: string;
+  severity: string;
+}
 
 export default function ReceiveDispatch() {
   const { id } = useParams<{ id: string }>();
-  const dispatch = mockDispatches.find(d => d.id === id);
-
-  const [issues, setIssues] = useState<ReceivingIssue[]>(dispatch?.issues || []);
+  const { role, user } = useAuth();
+  const [dispatch, setDispatch] = useState<DispatchDetail | null>(null);
+  const [items, setItems] = useState<ItemRow[]>([]);
+  const [issues, setIssues] = useState<IssueRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAddIssue, setShowAddIssue] = useState(false);
-  const [newIssue, setNewIssue] = useState<Partial<ReceivingIssue>>({ severity: 'medium' });
+  const [newIssueType, setNewIssueType] = useState('');
+  const [newIssueSeverity, setNewIssueSeverity] = useState('medium');
+  const [newIssueDesc, setNewIssueDesc] = useState('');
+
+  useEffect(() => {
+    if (id) fetchAll();
+  }, [id]);
+
+  const fetchAll = async () => {
+    const [dispatchRes, itemsRes, issuesRes] = await Promise.all([
+      supabase.from('dispatches').select('*').eq('id', id).single(),
+      supabase.from('dispatch_items').select('*').eq('dispatch_id', id),
+      supabase.from('receiving_issues').select('*').eq('dispatch_id', id),
+    ]);
+
+    if (dispatchRes.data) setDispatch(dispatchRes.data as DispatchDetail);
+    if (itemsRes.data) setItems(itemsRes.data as ItemRow[]);
+    if (issuesRes.data) setIssues(issuesRes.data as IssueRow[]);
+    setLoading(false);
+  };
+
+  const addIssue = async () => {
+    if (!newIssueType || !newIssueDesc || !id || !user) return;
+    const { data, error } = await supabase.from('receiving_issues').insert({
+      dispatch_id: id,
+      issue_type: newIssueType,
+      description: newIssueDesc,
+      severity: newIssueSeverity,
+      flagged_by: user.id,
+    }).select().single();
+
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      return;
+    }
+    if (data) setIssues([...issues, data as IssueRow]);
+    setNewIssueType('');
+    setNewIssueDesc('');
+    setNewIssueSeverity('medium');
+    setShowAddIssue(false);
+
+    // Update dispatch status to 'issue' if needed
+    await supabase.from('dispatches').update({ status: 'issue' }).eq('id', id);
+  };
+
+  const handleReceive = async () => {
+    if (!id) return;
+    const newStatus = issues.length > 0 ? 'issue' : 'received';
+    await supabase.from('dispatches').update({ status: newStatus }).eq('id', id);
+    toast({
+      title: issues.length > 0 ? 'Stock Received with Issues' : 'Stock Received',
+      description: issues.length > 0
+        ? `${dispatch?.display_id} received. ${issues.length} issue(s) flagged — POD sent to ${dispatch?.grower_name}.`
+        : `${dispatch?.display_id} received successfully. POD confirmation sent to ${dispatch?.grower_name}.`,
+    });
+    setDispatch(prev => prev ? { ...prev, status: newStatus } : prev);
+  };
+
+  if (loading) {
+    return <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading...</div>;
+  }
 
   if (!dispatch) {
     return (
@@ -31,24 +124,8 @@ export default function ReceiveDispatch() {
     );
   }
 
-  const addIssue = () => {
-    if (!newIssue.type || !newIssue.description) return;
-    setIssues([...issues, newIssue as ReceivingIssue]);
-    setNewIssue({ severity: 'medium' });
-    setShowAddIssue(false);
-  };
-
-  const handleReceive = () => {
-    toast({
-      title: issues.length > 0 ? 'Stock Received with Issues' : 'Stock Received',
-      description: issues.length > 0
-        ? `${dispatch.id} received. ${issues.length} issue(s) flagged — POD sent to ${dispatch.growerName}.`
-        : `${dispatch.id} received successfully. POD confirmation sent to ${dispatch.growerName}.`,
-    });
-  };
-
-  const totalQty = dispatch.items.reduce((s, i) => s + i.quantity, 0);
-  const totalWeight = dispatch.items.reduce((s, i) => s + (i.weight || 0), 0);
+  const totalQty = items.reduce((s, i) => s + i.quantity, 0);
+  const totalWeight = items.reduce((s, i) => s + (i.weight || 0), 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -60,11 +137,11 @@ export default function ReceiveDispatch() {
             </Link>
             <div className="h-6 w-px bg-border" />
             <div>
-              <h1 className="text-lg font-display tracking-tight">{dispatch.id}</h1>
-              <p className="text-xs text-muted-foreground">{dispatch.growerName}</p>
+              <h1 className="text-lg font-display tracking-tight">{dispatch.display_id}</h1>
+              <p className="text-xs text-muted-foreground">{dispatch.grower_name}</p>
             </div>
           </div>
-          <StatusBadge status={dispatch.status} />
+          <StatusBadge status={dispatch.status as any} />
         </div>
       </header>
 
@@ -72,9 +149,9 @@ export default function ReceiveDispatch() {
         {/* Summary Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { icon: FileText, label: 'Con Note', value: dispatch.conNoteNumber },
-            { icon: Truck, label: 'Carrier', value: dispatch.carrier },
-            { icon: Package, label: 'Pallets', value: dispatch.totalPallets.toString() },
+            { icon: FileText, label: 'Con Note', value: dispatch.con_note_number },
+            { icon: Truck, label: 'Carrier', value: dispatch.carrier || '-' },
+            { icon: Package, label: 'Pallets', value: dispatch.total_pallets.toString() },
             { icon: Package, label: 'Total Qty', value: totalQty.toString() },
           ].map(card => (
             <div key={card.label} className="p-4 rounded-lg border border-border bg-card">
@@ -87,8 +164,8 @@ export default function ReceiveDispatch() {
 
         {/* Dates */}
         <div className="flex gap-6 text-sm text-muted-foreground">
-          <span>Dispatched: <strong className="text-foreground">{format(new Date(dispatch.dispatchDate), 'dd MMM yyyy')}</strong></span>
-          <span>ETA: <strong className="text-foreground">{format(new Date(dispatch.expectedArrival), 'dd MMM yyyy')}</strong></span>
+          <span>Dispatched: <strong className="text-foreground">{format(new Date(dispatch.dispatch_date), 'dd MMM yyyy')}</strong></span>
+          {dispatch.expected_arrival && <span>ETA: <strong className="text-foreground">{format(new Date(dispatch.expected_arrival), 'dd MMM yyyy')}</strong></span>}
         </div>
 
         {/* Product Lines */}
@@ -107,21 +184,26 @@ export default function ReceiveDispatch() {
                 </tr>
               </thead>
               <tbody>
-                {dispatch.items.map((item, i) => (
-                  <tr key={i} className="border-t border-border">
+                {items.map((item) => (
+                  <tr key={item.id} className="border-t border-border">
                     <td className="p-3 font-medium">{item.product}</td>
-                    <td className="p-3 text-muted-foreground">{item.variety}</td>
-                    <td className="p-3">{item.size}</td>
-                    <td className="p-3">{item.trayType}</td>
+                    <td className="p-3 text-muted-foreground">{item.variety || '-'}</td>
+                    <td className="p-3">{item.size || '-'}</td>
+                    <td className="p-3">{item.tray_type || '-'}</td>
                     <td className="p-3 text-right font-display">{item.quantity}</td>
                     <td className="p-3 text-right text-muted-foreground">{item.weight ? `${item.weight}kg` : '-'}</td>
                   </tr>
                 ))}
-                <tr className="border-t border-border bg-muted/30">
-                  <td colSpan={4} className="p-3 font-display text-xs uppercase tracking-wider text-muted-foreground">Total</td>
-                  <td className="p-3 text-right font-display font-bold">{totalQty}</td>
-                  <td className="p-3 text-right font-display text-muted-foreground">{totalWeight ? `${totalWeight}kg` : '-'}</td>
-                </tr>
+                {items.length === 0 && (
+                  <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">No items recorded.</td></tr>
+                )}
+                {items.length > 0 && (
+                  <tr className="border-t border-border bg-muted/30">
+                    <td colSpan={4} className="p-3 font-display text-xs uppercase tracking-wider text-muted-foreground">Total</td>
+                    <td className="p-3 text-right font-display font-bold">{totalQty}</td>
+                    <td className="p-3 text-right font-display text-muted-foreground">{totalWeight ? `${totalWeight}kg` : '-'}</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -141,9 +223,11 @@ export default function ReceiveDispatch() {
             <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" /> Issues & Claims
             </h2>
-            <Button variant="outline" size="sm" onClick={() => setShowAddIssue(!showAddIssue)}>
-              <Plus className="h-3.5 w-3.5 mr-1" /> Flag Issue
-            </Button>
+            {role === 'staff' && (
+              <Button variant="outline" size="sm" onClick={() => setShowAddIssue(!showAddIssue)}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Flag Issue
+              </Button>
+            )}
           </div>
 
           {showAddIssue && (
@@ -151,14 +235,14 @@ export default function ReceiveDispatch() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Issue Type</Label>
-                  <Select value={newIssue.type} onValueChange={v => setNewIssue({ ...newIssue, type: v as ReceivingIssue['type'] })}>
+                  <Select value={newIssueType} onValueChange={setNewIssueType}>
                     <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                     <SelectContent>{ISSUE_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Severity</Label>
-                  <Select value={newIssue.severity} onValueChange={v => setNewIssue({ ...newIssue, severity: v as ReceivingIssue['severity'] })}>
+                  <Select value={newIssueSeverity} onValueChange={setNewIssueSeverity}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="low">Low</SelectItem>
@@ -170,7 +254,7 @@ export default function ReceiveDispatch() {
               </div>
               <div className="space-y-2">
                 <Label>Description</Label>
-                <Textarea value={newIssue.description || ''} onChange={e => setNewIssue({ ...newIssue, description: e.target.value })} placeholder="Describe the issue in detail..." rows={2} />
+                <Textarea value={newIssueDesc} onChange={e => setNewIssueDesc(e.target.value)} placeholder="Describe the issue in detail..." rows={2} />
               </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="ghost" size="sm" onClick={() => setShowAddIssue(false)}>Cancel</Button>
@@ -181,10 +265,10 @@ export default function ReceiveDispatch() {
 
           {issues.length > 0 ? (
             <div className="space-y-2">
-              {issues.map((issue, i) => (
-                <div key={i} className="p-4 rounded-lg border border-destructive/20 bg-destructive/5 space-y-1">
+              {issues.map((issue) => (
+                <div key={issue.id} className="p-4 rounded-lg border border-destructive/20 bg-destructive/5 space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{ISSUE_TYPES.find(t => t.value === issue.type)?.label}</span>
+                    <span className="text-sm font-medium">{ISSUE_TYPES.find(t => t.value === issue.issue_type)?.label || issue.issue_type}</span>
                     <span className={`text-xs font-display uppercase tracking-wider px-2 py-0.5 rounded-full ${
                       issue.severity === 'high' ? 'bg-destructive/20 text-destructive' :
                       issue.severity === 'medium' ? 'bg-warning/20 text-warning-foreground' :
@@ -200,17 +284,19 @@ export default function ReceiveDispatch() {
           )}
         </section>
 
-        {/* Actions */}
-        <div className="flex gap-3 pt-4 border-t border-border">
-          <Button onClick={handleReceive} size="lg" className="flex-1 font-display tracking-wide">
-            <CheckCircle2 className="h-4 w-4 mr-2" /> Confirm Received
-          </Button>
-          {issues.length > 0 && (
-            <Button variant="outline" size="lg" className="font-display tracking-wide">
-              <Send className="h-4 w-4 mr-2" /> Send POD to Grower
+        {/* Actions — staff only */}
+        {role === 'staff' && dispatch.status !== 'received' && (
+          <div className="flex gap-3 pt-4 border-t border-border">
+            <Button onClick={handleReceive} size="lg" className="flex-1 font-display tracking-wide">
+              <CheckCircle2 className="h-4 w-4 mr-2" /> Confirm Received
             </Button>
-          )}
-        </div>
+            {issues.length > 0 && (
+              <Button variant="outline" size="lg" className="font-display tracking-wide">
+                <Send className="h-4 w-4 mr-2" /> Send POD to Grower
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

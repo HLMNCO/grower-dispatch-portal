@@ -14,16 +14,205 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      dispatch_items: {
+        Row: {
+          created_at: string
+          dispatch_id: string
+          id: string
+          product: string
+          quantity: number
+          size: string | null
+          tray_type: string | null
+          variety: string | null
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string
+          dispatch_id: string
+          id?: string
+          product: string
+          quantity?: number
+          size?: string | null
+          tray_type?: string | null
+          variety?: string | null
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string
+          dispatch_id?: string
+          id?: string
+          product?: string
+          quantity?: number
+          size?: string | null
+          tray_type?: string | null
+          variety?: string | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_items_dispatch_id_fkey"
+            columns: ["dispatch_id"]
+            isOneToOne: false
+            referencedRelation: "dispatches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatches: {
+        Row: {
+          carrier: string | null
+          con_note_number: string
+          created_at: string
+          dispatch_date: string
+          display_id: string
+          expected_arrival: string | null
+          grower_code: string | null
+          grower_name: string
+          id: string
+          notes: string | null
+          status: string
+          supplier_id: string
+          total_pallets: number
+          updated_at: string
+        }
+        Insert: {
+          carrier?: string | null
+          con_note_number: string
+          created_at?: string
+          dispatch_date: string
+          display_id?: string
+          expected_arrival?: string | null
+          grower_code?: string | null
+          grower_name: string
+          id?: string
+          notes?: string | null
+          status?: string
+          supplier_id: string
+          total_pallets?: number
+          updated_at?: string
+        }
+        Update: {
+          carrier?: string | null
+          con_note_number?: string
+          created_at?: string
+          dispatch_date?: string
+          display_id?: string
+          expected_arrival?: string | null
+          grower_code?: string | null
+          grower_name?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          supplier_id?: string
+          total_pallets?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          company_name: string
+          created_at: string
+          display_name: string
+          grower_code: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_name?: string
+          created_at?: string
+          display_name?: string
+          grower_code?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          display_name?: string
+          grower_code?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      receiving_issues: {
+        Row: {
+          created_at: string
+          description: string
+          dispatch_id: string
+          flagged_by: string | null
+          id: string
+          issue_type: string
+          severity: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          dispatch_id: string
+          flagged_by?: string | null
+          id?: string
+          issue_type: string
+          severity?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          dispatch_id?: string
+          flagged_by?: string | null
+          id?: string
+          issue_type?: string
+          severity?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receiving_issues_dispatch_id_fkey"
+            columns: ["dispatch_id"]
+            isOneToOne: false
+            referencedRelation: "dispatches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "staff" | "supplier"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +339,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["staff", "supplier"],
+    },
   },
 } as const
