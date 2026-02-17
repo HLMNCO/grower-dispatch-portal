@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { CalendarIcon, Plus, Trash2, Send, Truck, Package } from 'lucide-react';
@@ -19,7 +19,7 @@ import { PhotoUpload } from '@/components/PhotoUpload';
 const emptyItem: DispatchItem = { product: '', variety: '', size: '', trayType: '', quantity: 0 };
 
 export default function SupplierDispatchForm() {
-  const { user } = useAuth();
+  const { user, business } = useAuth();
   const navigate = useNavigate();
   const [growerName, setGrowerName] = useState('');
   const [growerCode, setGrowerCode] = useState('');
@@ -32,6 +32,35 @@ export default function SupplierDispatchForm() {
   const [notes, setNotes] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedReceiver, setSelectedReceiver] = useState('');
+  const [receivers, setReceivers] = useState<{ id: string; name: string }[]>([]);
+
+  // Pre-fill grower info from business profile
+  useEffect(() => {
+    if (business) {
+      setGrowerName(business.name);
+    }
+    fetchReceivers();
+  }, [business]);
+
+  const fetchReceivers = async () => {
+    if (!business) return;
+    // Get approved connections
+    const { data: conns } = await supabase
+      .from('connections')
+      .select('receiver_business_id')
+      .eq('supplier_business_id', business.id)
+      .eq('status', 'approved');
+    
+    if (conns && conns.length > 0) {
+      const ids = conns.map(c => c.receiver_business_id);
+      const { data: bizData } = await supabase
+        .from('businesses')
+        .select('id, name')
+        .in('id', ids);
+      if (bizData) setReceivers(bizData);
+    }
+  };
 
   const addItem = () => setItems([...items, { ...emptyItem }]);
   const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
@@ -54,6 +83,8 @@ export default function SupplierDispatchForm() {
       .from('dispatches')
       .insert({
         supplier_id: user.id,
+        supplier_business_id: business?.id || null,
+        receiver_business_id: selectedReceiver || null,
         grower_name: growerName,
         grower_code: growerCode || null,
         dispatch_date: format(dispatchDate, 'yyyy-MM-dd'),
@@ -117,6 +148,28 @@ export default function SupplierDispatchForm() {
       </header>
 
       <form onSubmit={handleSubmit} className="container max-w-3xl py-8 space-y-8">
+        {/* Sending To */}
+        <section className="space-y-4">
+          <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">Sending To</h2>
+          {receivers.length === 0 ? (
+            <div className="p-4 border border-dashed border-border rounded-lg text-center">
+              <p className="text-sm text-muted-foreground">No connected receivers yet.</p>
+              <p className="text-xs text-muted-foreground mt-1">Go to Connections to find and connect with a receiver first.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {receivers.map(r => (
+                <button key={r.id} type="button" onClick={() => setSelectedReceiver(r.id)}
+                  className={`p-3 rounded-lg border text-left text-sm transition-all ${
+                    selectedReceiver === r.id ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/30'
+                  }`}>
+                  <div className="font-medium">{r.name}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+
         {/* Grower Details */}
         <section className="space-y-4">
           <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">Grower Details</h2>

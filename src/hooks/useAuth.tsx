@@ -2,12 +2,20 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 
+interface Business {
+  id: string;
+  name: string;
+  business_type: 'receiver' | 'supplier';
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
   role: 'staff' | 'supplier' | null;
+  business: Business | null;
   signOut: () => Promise<void>;
+  refreshBusiness: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -15,7 +23,9 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   loading: true,
   role: null,
+  business: null,
   signOut: async () => {},
+  refreshBusiness: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -25,16 +35,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<'staff' | 'supplier' | null>(null);
+  const [business, setBusiness] = useState<Business | null>(null);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        // Fetch role without blocking
-        setTimeout(() => fetchRole(session.user.id), 0);
+        setTimeout(() => {
+          fetchRole(session.user.id);
+          fetchBusiness(session.user.id);
+        }, 0);
       } else {
         setRole(null);
+        setBusiness(null);
       }
       setLoading(false);
     });
@@ -44,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchRole(session.user.id);
+        fetchBusiness(session.user.id);
       }
       setLoading(false);
     });
@@ -60,12 +75,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole((data?.role as 'staff' | 'supplier') ?? null);
   };
 
+  const fetchBusiness = async (userId: string) => {
+    const { data } = await supabase
+      .from('businesses')
+      .select('id, name, business_type')
+      .eq('owner_id', userId)
+      .maybeSingle();
+    if (data) {
+      setBusiness(data as Business);
+    }
+  };
+
+  const refreshBusiness = async () => {
+    if (user) await fetchBusiness(user.id);
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, role, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, role, business, signOut, refreshBusiness }}>
       {children}
     </AuthContext.Provider>
   );

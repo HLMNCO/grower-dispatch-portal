@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      businesses: {
+        Row: {
+          abn: string | null
+          address: string | null
+          business_type: string
+          city: string | null
+          created_at: string
+          email: string | null
+          grower_code: string | null
+          id: string
+          name: string
+          owner_id: string
+          phone: string | null
+          region: string | null
+          state: string | null
+          updated_at: string
+        }
+        Insert: {
+          abn?: string | null
+          address?: string | null
+          business_type: string
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          grower_code?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          phone?: string | null
+          region?: string | null
+          state?: string | null
+          updated_at?: string
+        }
+        Update: {
+          abn?: string | null
+          address?: string | null
+          business_type?: string
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          grower_code?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          phone?: string | null
+          region?: string | null
+          state?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      connections: {
+        Row: {
+          id: string
+          receiver_business_id: string
+          requested_at: string
+          responded_at: string | null
+          status: string
+          supplier_business_id: string
+        }
+        Insert: {
+          id?: string
+          receiver_business_id: string
+          requested_at?: string
+          responded_at?: string | null
+          status?: string
+          supplier_business_id: string
+        }
+        Update: {
+          id?: string
+          receiver_business_id?: string
+          requested_at?: string
+          responded_at?: string | null
+          status?: string
+          supplier_business_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connections_receiver_business_id_fkey"
+            columns: ["receiver_business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "connections_supplier_business_id_fkey"
+            columns: ["supplier_business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispatch_items: {
         Row: {
           created_at: string
@@ -71,7 +164,9 @@ export type Database = {
           id: string
           notes: string | null
           photos: string[] | null
+          receiver_business_id: string | null
           status: string
+          supplier_business_id: string | null
           supplier_id: string
           total_pallets: number
           updated_at: string
@@ -88,7 +183,9 @@ export type Database = {
           id?: string
           notes?: string | null
           photos?: string[] | null
+          receiver_business_id?: string | null
           status?: string
+          supplier_business_id?: string | null
           supplier_id: string
           total_pallets?: number
           updated_at?: string
@@ -105,15 +202,33 @@ export type Database = {
           id?: string
           notes?: string | null
           photos?: string[] | null
+          receiver_business_id?: string | null
           status?: string
+          supplier_business_id?: string | null
           supplier_id?: string
           total_pallets?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dispatches_receiver_business_id_fkey"
+            columns: ["receiver_business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatches_supplier_business_id_fkey"
+            columns: ["supplier_business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
+          business_id: string | null
           company_name: string
           created_at: string
           display_name: string
@@ -124,6 +239,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          business_id?: string | null
           company_name?: string
           created_at?: string
           display_name?: string
@@ -134,6 +250,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          business_id?: string | null
           company_name?: string
           created_at?: string
           display_name?: string
@@ -143,7 +260,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       receiving_issues: {
         Row: {
