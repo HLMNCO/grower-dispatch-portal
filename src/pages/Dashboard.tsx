@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
-import { Package, Truck, AlertTriangle, CheckCircle2, Clock, ArrowRight, Search, Filter, LogOut, Users, Plus, CalendarDays } from 'lucide-react';
+import { format, addDays, isSameDay } from 'date-fns';
+import { Package, Truck, AlertTriangle, CheckCircle2, Clock, ArrowRight, Search, Filter, LogOut, Users, Plus, CalendarDays, Bell } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { StatusBadge } from '@/components/StatusBadge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,6 +27,7 @@ interface DispatchRow {
   created_at: string;
   receiver_business_id: string | null;
   supplier_business_id: string | null;
+  truck_number: string | null;
 }
 
 const statCards = [
@@ -35,6 +37,41 @@ const statCards = [
   { label: 'Issues', icon: AlertTriangle, filterStatus: 'issue' },
   { label: 'Received', icon: CheckCircle2, filterStatus: 'received' },
 ];
+
+function TomorrowSummary({ dispatches }: { dispatches: DispatchRow[] }) {
+  const tomorrow = addDays(new Date(), 1);
+  const tomorrowArrivals = dispatches.filter(
+    d => d.expected_arrival && isSameDay(new Date(d.expected_arrival), tomorrow) && d.status !== 'received'
+  );
+
+  if (tomorrowArrivals.length === 0) return null;
+
+  const totalPallets = tomorrowArrivals.reduce((sum, d) => sum + d.total_pallets, 0);
+
+  return (
+    <Alert className="border-primary/30 bg-primary/5">
+      <Bell className="h-4 w-4 text-primary" />
+      <AlertTitle className="font-display tracking-tight">
+        Tomorrow's Arrivals — {format(tomorrow, 'EEEE, d MMM')}
+      </AlertTitle>
+      <AlertDescription className="mt-2 space-y-1">
+        <p className="text-sm font-medium">
+          {tomorrowArrivals.length} dispatch{tomorrowArrivals.length !== 1 ? 'es' : ''} · {totalPallets} pallet{totalPallets !== 1 ? 's' : ''} expected
+        </p>
+        <div className="mt-2 grid gap-1.5">
+          {tomorrowArrivals.map(d => (
+            <div key={d.id} className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{d.grower_name}</span>
+              <span>{d.total_pallets} plt</span>
+              {d.carrier && <span className="flex items-center gap-1"><Truck className="h-3 w-3" />{d.carrier}</span>}
+              {d.truck_number && <span>Rego: {d.truck_number}</span>}
+            </div>
+          ))}
+        </div>
+      </AlertDescription>
+    </Alert>
+  );
+}
 
 export default function Dashboard() {
   const [search, setSearch] = useState('');
@@ -82,6 +119,8 @@ export default function Dashboard() {
     return acc;
   }, {} as Record<string, number>);
 
+  const tomorrow = useMemo(() => addDays(new Date(), 1), []);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card sticky top-0 z-10">
@@ -125,6 +164,9 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value="dispatches" className="space-y-6">
+            {/* Tomorrow's Arrivals Summary */}
+            {!isSupplier && <TomorrowSummary dispatches={dispatches} />}
+
             {/* Stat Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               {statCards.map(card => {
