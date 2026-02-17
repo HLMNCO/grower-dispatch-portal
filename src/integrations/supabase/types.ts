@@ -116,6 +116,7 @@ export type Database = {
           quantity: number
           size: string | null
           tray_type: string | null
+          unit_weight: number | null
           variety: string | null
           weight: number | null
         }
@@ -127,6 +128,7 @@ export type Database = {
           quantity?: number
           size?: string | null
           tray_type?: string | null
+          unit_weight?: number | null
           variety?: string | null
           weight?: number | null
         }
@@ -138,6 +140,7 @@ export type Database = {
           quantity?: number
           size?: string | null
           tray_type?: string | null
+          unit_weight?: number | null
           variety?: string | null
           weight?: number | null
         }

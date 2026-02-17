@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Dashboard from "./pages/Dashboard";
 import SupplierForm from "./pages/SupplierForm";
 import ReceiveDispatch from "./pages/ReceiveDispatch";
+import InboundPlanning from "./pages/InboundPlanning";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 
@@ -33,6 +34,7 @@ const AppRoutes = () => (
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/dispatch" element={<ProtectedRoute><SupplierForm /></ProtectedRoute>} />
       <Route path="/receive/:id" element={<ProtectedRoute><ReceiveDispatch /></ProtectedRoute>} />
+      <Route path="/planning" element={<ProtectedRoute><InboundPlanning /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </BrowserRouter>

@@ -36,6 +36,7 @@ interface ItemRow {
   size: string | null;
   tray_type: string | null;
   quantity: number;
+  unit_weight: number | null;
   weight: number | null;
 }
 
@@ -132,7 +133,7 @@ export default function ReceiveDispatch() {
   }
 
   const totalQty = items.reduce((s, i) => s + i.quantity, 0);
-  const totalWeight = items.reduce((s, i) => s + (i.weight || 0), 0);
+  const totalWeight = items.reduce((s, i) => s + (i.unit_weight ? i.quantity * i.unit_weight : (i.weight || 0)), 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -184,34 +185,40 @@ export default function ReceiveDispatch() {
               <thead>
                 <tr className="bg-muted/50">
                   <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Product</th>
-                  <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Variety</th>
-                  <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Size</th>
-                  <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Pack</th>
-                  <th className="text-right p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Qty</th>
-                  <th className="text-right p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Weight</th>
+                   <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Variety</th>
+                   <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Size</th>
+                   <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Pack</th>
+                   <th className="text-right p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Qty</th>
+                   <th className="text-right p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Kg/Unit</th>
+                   <th className="text-right p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Total Kg</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((item) => (
-                  <tr key={item.id} className="border-t border-border">
-                    <td className="p-3 font-medium">{item.product}</td>
-                    <td className="p-3 text-muted-foreground">{item.variety || '-'}</td>
-                    <td className="p-3">{item.size || '-'}</td>
-                    <td className="p-3">{item.tray_type || '-'}</td>
-                    <td className="p-3 text-right font-display">{item.quantity}</td>
-                    <td className="p-3 text-right text-muted-foreground">{item.weight ? `${item.weight}kg` : '-'}</td>
-                  </tr>
-                ))}
-                {items.length === 0 && (
-                  <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">No items recorded.</td></tr>
-                )}
-                {items.length > 0 && (
-                  <tr className="border-t border-border bg-muted/30">
-                    <td colSpan={4} className="p-3 font-display text-xs uppercase tracking-wider text-muted-foreground">Total</td>
-                    <td className="p-3 text-right font-display font-bold">{totalQty}</td>
-                    <td className="p-3 text-right font-display text-muted-foreground">{totalWeight ? `${totalWeight}kg` : '-'}</td>
-                  </tr>
-                )}
+                 {items.map((item) => {
+                   const itemTotal = item.unit_weight ? item.quantity * item.unit_weight : (item.weight || 0);
+                   return (
+                     <tr key={item.id} className="border-t border-border">
+                       <td className="p-3 font-medium">{item.product}</td>
+                       <td className="p-3 text-muted-foreground">{item.variety || '-'}</td>
+                       <td className="p-3">{item.size || '-'}</td>
+                       <td className="p-3">{item.tray_type || '-'}</td>
+                       <td className="p-3 text-right font-display">{item.quantity}</td>
+                       <td className="p-3 text-right text-muted-foreground">{item.unit_weight ? `${item.unit_weight}` : '-'}</td>
+                       <td className="p-3 text-right text-muted-foreground">{itemTotal ? `${itemTotal.toLocaleString()}kg` : '-'}</td>
+                     </tr>
+                   );
+                 })}
+                 {items.length === 0 && (
+                   <tr><td colSpan={7} className="p-4 text-center text-muted-foreground">No items recorded.</td></tr>
+                 )}
+                 {items.length > 0 && (
+                   <tr className="border-t border-border bg-muted/30">
+                     <td colSpan={4} className="p-3 font-display text-xs uppercase tracking-wider text-muted-foreground">Total</td>
+                     <td className="p-3 text-right font-display font-bold">{totalQty}</td>
+                     <td className="p-3" />
+                     <td className="p-3 text-right font-display text-muted-foreground">{totalWeight ? `${totalWeight.toLocaleString()}kg` : '-'}</td>
+                   </tr>
+                 )}
               </tbody>
             </table>
           </div>
