@@ -16,7 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { PhotoUpload } from '@/components/PhotoUpload';
 
-const emptyItem: DispatchItem = { product: '', variety: '', size: '', trayType: '', quantity: 0 };
+const emptyItem: DispatchItem = { product: '', variety: '', size: '', trayType: '', quantity: 0, weight: 0 };
 
 export default function SupplierDispatchForm() {
   const { user, business } = useAuth();
@@ -72,6 +72,7 @@ export default function SupplierDispatchForm() {
   };
 
   const totalQuantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+  const totalWeight = items.reduce((sum, item) => sum + ((item.quantity || 0) * (item.weight || 0)), 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,7 +117,8 @@ export default function SupplierDispatchForm() {
         size: i.size,
         tray_type: i.trayType,
         quantity: i.quantity,
-        weight: i.weight || null,
+        unit_weight: i.weight || null,
+        weight: i.weight && i.quantity ? i.quantity * i.weight : null,
       }));
 
     if (itemRows.length > 0) {
@@ -242,7 +244,9 @@ export default function SupplierDispatchForm() {
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">Product Breakdown</h2>
-            <span className="text-sm text-muted-foreground font-medium">{totalQuantity} total units</span>
+            <span className="text-sm text-muted-foreground font-medium">
+              {totalQuantity} units{totalWeight > 0 ? ` · ${totalWeight.toLocaleString()}kg` : ''}
+            </span>
           </div>
           
           <div className="space-y-3">
@@ -270,8 +274,21 @@ export default function SupplierDispatchForm() {
                     <SelectTrigger><SelectValue placeholder="Tray / Pack" /></SelectTrigger>
                     <SelectContent>{TRAY_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                   </Select>
-                  <Input type="number" placeholder="Qty" min={0} value={item.quantity || ''} onChange={e => updateItem(i, 'quantity', parseInt(e.target.value) || 0)} />
-                  <Input type="number" placeholder="Weight (kg)" min={0} value={item.weight || ''} onChange={e => updateItem(i, 'weight', parseFloat(e.target.value) || 0)} />
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Quantity *</Label>
+                    <Input type="number" placeholder="e.g. 60" min={0} value={item.quantity || ''} onChange={e => updateItem(i, 'quantity', parseInt(e.target.value) || 0)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Kg per Unit</Label>
+                    <Input type="number" placeholder="e.g. 15" min={0} step="0.1" value={item.weight || ''} onChange={e => updateItem(i, 'weight', parseFloat(e.target.value) || 0)} />
+                  </div>
+                  {item.quantity > 0 && item.weight && item.weight > 0 && (
+                    <div className="flex items-end pb-2">
+                      <span className="text-xs text-muted-foreground">
+                        = <strong className="text-foreground font-display">{(item.quantity * item.weight).toLocaleString()}kg</strong> total
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

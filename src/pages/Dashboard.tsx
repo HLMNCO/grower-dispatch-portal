@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format, addDays, isSameDay } from 'date-fns';
-import { Package, Truck, AlertTriangle, CheckCircle2, Clock, ArrowRight, Search, Filter, LogOut, Users, Plus, CalendarDays, Bell } from 'lucide-react';
+import { Package, Truck, AlertTriangle, CheckCircle2, Clock, ArrowRight, Search, Filter, LogOut, Users, Plus, CalendarDays, Bell, BarChart3 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -139,6 +139,13 @@ export default function Dashboard() {
               <Link to="/dispatch">
                 <Button size="sm" className="font-display tracking-wide">
                   <Plus className="h-4 w-4 mr-1" /> New Dispatch
+                </Button>
+              </Link>
+            )}
+            {!isSupplier && (
+              <Link to="/planning">
+                <Button size="sm" variant="outline" className="font-display tracking-wide">
+                  <BarChart3 className="h-4 w-4 mr-1" /> Planning
                 </Button>
               </Link>
             )}

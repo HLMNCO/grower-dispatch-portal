@@ -4,7 +4,7 @@ export interface DispatchItem {
   size: string;
   trayType: string;
   quantity: number;
-  weight?: number;
+  weight?: number; // kg per unit (unit_weight)
 }
 
 export interface Dispatch {
