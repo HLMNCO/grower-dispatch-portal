@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Package, Truck, AlertTriangle, CheckCircle2, Clock, ArrowRight, Search, Filter, LogOut, Users, Plus } from 'lucide-react';
+import { Package, Truck, AlertTriangle, CheckCircle2, Clock, ArrowRight, Search, Filter, LogOut, Users, Plus, CalendarDays } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,6 +9,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import ConnectionsPage from './ConnectionsPage';
+import ReceivingCalendar from '@/components/ReceivingCalendar';
 
 interface DispatchRow {
   id: string;
@@ -111,9 +112,12 @@ export default function Dashboard() {
 
       <div className="container py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
+           <TabsList className="mb-6">
             <TabsTrigger value="dispatches">
               <Package className="h-4 w-4 mr-1.5" /> Dispatches
+            </TabsTrigger>
+            <TabsTrigger value="calendar">
+              <CalendarDays className="h-4 w-4 mr-1.5" /> Calendar
             </TabsTrigger>
             <TabsTrigger value="connections">
               <Users className="h-4 w-4 mr-1.5" /> Connections
@@ -200,6 +204,10 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="calendar">
+            <ReceivingCalendar />
           </TabsContent>
 
           <TabsContent value="connections">

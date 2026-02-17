@@ -169,6 +169,7 @@ export type Database = {
           supplier_business_id: string | null
           supplier_id: string
           total_pallets: number
+          truck_number: string | null
           updated_at: string
         }
         Insert: {
@@ -188,6 +189,7 @@ export type Database = {
           supplier_business_id?: string | null
           supplier_id: string
           total_pallets?: number
+          truck_number?: string | null
           updated_at?: string
         }
         Update: {
@@ -207,6 +209,7 @@ export type Database = {
           supplier_business_id?: string | null
           supplier_id?: string
           total_pallets?: number
+          truck_number?: string | null
           updated_at?: string
         }
         Relationships: [
