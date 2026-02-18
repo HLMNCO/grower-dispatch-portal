@@ -44,7 +44,7 @@ export default function TransporterDashboard() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="container py-3 sm:py-4">
+        <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary">
@@ -62,7 +62,7 @@ export default function TransporterDashboard() {
         </div>
       </header>
 
-      <div className="container py-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         <div>
           <h2 className="text-2xl font-display tracking-tight">Run Sheet — {format(today, 'EEE d MMM')}</h2>
           <p className="text-sm text-muted-foreground mt-1">{business?.name}</p>
