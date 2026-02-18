@@ -85,13 +85,13 @@ export default function ReceiverVerifyPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="container py-4">
+        <div className="max-w-2xl mx-auto px-4 py-4">
           <h1 className="text-lg font-display tracking-tight">Receive Produce</h1>
           <p className="text-xs text-muted-foreground">Tap a delivery to start receiving</p>
         </div>
       </header>
 
-      <div className="container max-w-2xl py-4 space-y-4">
+      <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
