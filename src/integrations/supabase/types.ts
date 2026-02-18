@@ -262,6 +262,7 @@ export type Database = {
           internal_lot_number: string | null
           is_split_load: boolean
           notes: string | null
+          pallet_type: string | null
           photos: string[] | null
           pickup_time: string | null
           qr_code_token: string | null
@@ -299,6 +300,7 @@ export type Database = {
           internal_lot_number?: string | null
           is_split_load?: boolean
           notes?: string | null
+          pallet_type?: string | null
           photos?: string[] | null
           pickup_time?: string | null
           qr_code_token?: string | null
@@ -336,6 +338,7 @@ export type Database = {
           internal_lot_number?: string | null
           is_split_load?: boolean
           notes?: string | null
+          pallet_type?: string | null
           photos?: string[] | null
           pickup_time?: string | null
           qr_code_token?: string | null

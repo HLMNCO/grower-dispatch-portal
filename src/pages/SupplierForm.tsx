@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
-import { CalendarIcon, Plus, Trash2, Send, Package, Save, Thermometer, Snowflake, IceCreamCone } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Send, Package, Save, Thermometer, Snowflake, IceCreamCone, FileText, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,7 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { PhotoUpload } from '@/components/PhotoUpload';
+import { generateDeliveryAdvicePDF } from '@/services/deliveryAdviceGenerator';
 
 const COMMODITY_CLASSES = [
   { value: 'stone_fruit', label: 'Stone Fruit' },
@@ -65,6 +66,12 @@ export default function SupplierDispatchForm() {
   const [submitting, setSubmitting] = useState(false);
   const [selectedReceiver, setSelectedReceiver] = useState('');
   const [receivers, setReceivers] = useState<{ id: string; name: string }[]>([]);
+  const [palletType, setPalletType] = useState('');
+
+  // Post-submission state
+  const [submitted, setSubmitted] = useState(false);
+  const [submittedDispatchId, setSubmittedDispatchId] = useState('');
+  const [submittedDaNumber, setSubmittedDaNumber] = useState('');
 
   // Templates
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
@@ -188,6 +195,7 @@ export default function SupplierDispatchForm() {
         carrier: carrier || null,
         truck_number: truckNumber || null,
         total_pallets: parseInt(totalPallets) || 0,
+        pallet_type: palletType || null,
         temperature_zone: temperatureZone || null,
         commodity_class: commodityClass || null,
         notes,
@@ -242,11 +250,9 @@ export default function SupplierDispatchForm() {
     const { data: daNumber } = await supabase.rpc('generate_delivery_advice_number', { p_dispatch_id: dispatch.id });
 
     setSubmitting(false);
-    toast({
-      title: 'Delivery Advice Submitted',
-      description: daNumber ? `${daNumber} has been submitted. Your receiver will be notified.` : `Your delivery advice has been submitted. Your receiver will be notified.`,
-    });
-    navigate(`/dispatch/${dispatch.id}`);
+    setSubmittedDispatchId(dispatch.id);
+    setSubmittedDaNumber(daNumber || dispatch.id);
+    setSubmitted(true);
   };
 
   const tempZones = [
@@ -254,6 +260,42 @@ export default function SupplierDispatchForm() {
     { value: 'chilled', icon: Snowflake, label: 'Chilled', desc: '2°C – 8°C' },
     { value: 'frozen', icon: IceCreamCone, label: 'Frozen', desc: 'Below 0°C' },
   ];
+
+  const handleDownloadPDF = async () => {
+    try {
+      await generateDeliveryAdvicePDF(submittedDispatchId);
+      toast({ title: 'PDF Downloaded', description: 'Delivery advice PDF has been downloaded.' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to generate PDF', variant: 'destructive' });
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16 text-center space-y-6">
+        <div className="bg-primary/10 rounded-full w-20 h-20 flex items-center justify-center mx-auto">
+          <CheckCircle2 className="h-10 w-10 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-display tracking-tight">Delivery Advice Submitted</h1>
+          <p className="text-muted-foreground mt-2">
+            <span className="font-display font-bold text-foreground">{submittedDaNumber}</span> has been submitted. Your receiver will be notified.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Button onClick={handleDownloadPDF} variant="outline" size="lg" className="font-display min-h-[48px]">
+            <FileText className="h-4 w-4 mr-2" /> Download DA PDF
+          </Button>
+          <Button onClick={() => navigate(`/dispatch/${submittedDispatchId}`)} size="lg" className="font-display min-h-[48px]">
+            View Dispatch <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
+        </div>
+        <Button onClick={() => navigate('/dispatch')} variant="ghost" className="font-display text-muted-foreground min-h-[44px]">
+          ← Back to All Dispatches
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 sm:py-8">
@@ -358,11 +400,11 @@ export default function SupplierDispatchForm() {
                   </Select>
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Quantity *</Label>
-                    <Input type="number" placeholder="e.g. 60" min={0} value={item.quantity || ''} onChange={e => updateItem(i, 'quantity', parseInt(e.target.value) || 0)} />
+                    <Input type="number" placeholder="e.g. 60" min={0} value={item.quantity === 0 ? '' : item.quantity} onChange={e => updateItem(i, 'quantity', parseInt(e.target.value) || 0)} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Kg per Unit</Label>
-                    <Input type="number" placeholder="e.g. 15" min={0} step="0.1" value={item.weight || ''} onChange={e => updateItem(i, 'weight', parseFloat(e.target.value) || 0)} />
+                    <Input type="number" placeholder="e.g. 15" min={0} step="0.1" value={item.weight === 0 ? '' : item.weight} onChange={e => updateItem(i, 'weight', parseFloat(e.target.value) || 0)} />
                   </div>
                   {item.quantity > 0 && item.weight && item.weight > 0 && (
                     <div className="flex items-end pb-2">
@@ -471,10 +513,32 @@ export default function SupplierDispatchForm() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="pallets">Total Pallets</Label>
               <Input id="pallets" type="number" min={0} value={totalPallets} onChange={e => setTotalPallets(e.target.value)} placeholder="0" />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Pallet Type</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: 'chep', label: 'CHEP' },
+                  { value: 'loscam', label: 'Loscam' },
+                  { value: 'both', label: 'Both' },
+                ].map(pt => (
+                  <button
+                    key={pt.value}
+                    type="button"
+                    onClick={() => setPalletType(pt.value)}
+                    className={cn(
+                      "p-2.5 rounded-lg border text-center transition-all text-sm font-display min-h-[44px]",
+                      palletType === pt.value ? 'border-primary bg-primary/5 ring-1 ring-primary font-bold' : 'border-border hover:border-primary/30'
+                    )}
+                  >
+                    {pt.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Commodity Class</Label>

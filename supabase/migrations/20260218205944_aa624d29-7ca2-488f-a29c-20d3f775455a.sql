@@ -1,0 +1,1 @@
+ALTER TABLE public.dispatches ADD COLUMN pallet_type text NULL;
