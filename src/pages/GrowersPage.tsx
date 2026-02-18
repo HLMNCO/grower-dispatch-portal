@@ -12,6 +12,8 @@ import {
   Search, Plus, Sprout, Edit2, Save, X, Copy, CheckCircle2, Link2,
   MessageSquare, Smartphone, Loader2, ChevronDown, ChevronUp,
 } from 'lucide-react';
+import { GrowerScorecard } from '@/components/GrowerScorecard';
+import { NoGrowersEmpty, NoSearchResultsEmpty } from '@/components/EmptyStates';
 
 interface Grower {
   id: string;
@@ -327,9 +329,7 @@ export default function GrowersPage() {
         {loading ? (
           <div className="text-center py-12 text-muted-foreground text-sm">Loading growers...</div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">
-            {growers.length === 0 ? 'No growers yet. Add your first grower above.' : 'No growers match your search.'}
-          </div>
+          growers.length === 0 ? <NoGrowersEmpty /> : <NoSearchResultsEmpty />
         ) : (
           <div className="rounded-lg border border-border overflow-hidden divide-y divide-border">
             {filtered.map(grower => {
@@ -373,12 +373,17 @@ export default function GrowersPage() {
 
                   {/* Expanded details / edit */}
                   {isExpanded && !isEditing && (
-                    <div className="px-4 pb-3 pt-1 border-t border-border/50 bg-muted/20">
+                    <div className="px-4 pb-4 pt-2 border-t border-border/50 bg-muted/20 space-y-4">
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                         <div><span className="text-xs text-muted-foreground block">Phone</span>{grower.phone || '—'}</div>
                         <div><span className="text-xs text-muted-foreground block">Email</span>{grower.email || '—'}</div>
                         <div><span className="text-xs text-muted-foreground block">Intake Links</span>{links.length} created</div>
                       </div>
+                      <GrowerScorecard
+                        growerId={grower.id}
+                        growerName={grower.name}
+                        growerCode={grower.grower_code}
+                      />
                     </div>
                   )}
 
