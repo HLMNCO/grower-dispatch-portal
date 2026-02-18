@@ -5,7 +5,7 @@ import { toast as sonnerToast } from 'sonner';
 import {
   Package, Plus, ClipboardList, FileText, Settings, LogOut,
   LayoutDashboard, CheckCircle2, CalendarDays, Users, Menu, X,
-  BarChart3, ClipboardCheck
+  BarChart3, ClipboardCheck, Home
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -117,29 +117,61 @@ function ReceiverSidebar({ onClose }: { onClose?: () => void }) {
   );
 }
 
-function MobileActionBar() {
+/** Mobile bottom tab bar — primary navigation */
+function MobileBottomNav() {
   const { role, business, canPlan } = useAuth();
+  const { pathname } = useLocation();
+
+  const isSupplier = role === 'supplier';
   const isReceiver = role === 'staff';
-  if (!isReceiver) return null;
+
+  const supplierTabs = [
+    { to: '/dispatch', icon: Home, label: 'Home', active: pathname === '/dispatch' },
+    { to: '/dispatch/new', icon: Plus, label: 'New', active: pathname === '/dispatch/new', isPrimary: true },
+    { to: '/supplier/templates', icon: FileText, label: 'Templates', active: pathname === '/supplier/templates' },
+  ];
+
+  const receiverTabs = [
+    { to: '/', icon: Home, label: 'Dashboard', active: pathname === '/', isPrimary: false },
+    { to: '/receiver/verify', icon: ClipboardCheck, label: 'Receive', active: pathname === '/receiver/verify', isPrimary: true },
+    ...(canPlan ? [{ to: '/planning', icon: CalendarDays, label: 'Planning', active: pathname === '/planning', isPrimary: false }] : []),
+  ];
+
+  const tabs = isSupplier ? supplierTabs : isReceiver ? receiverTabs : [];
+  if (tabs.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-1.5 overflow-x-auto">
-      {business?.public_intake_token && (
-        <SupplierIntakeLinkDialog intakeToken={business.public_intake_token} />
-      )}
-      <Link to="/receiver/verify">
-        <Button size="sm" variant="outline" className="font-display tracking-wide text-xs whitespace-nowrap min-h-[36px]">
-          <ClipboardCheck className="h-3.5 w-3.5 mr-1" /> Receive
-        </Button>
-      </Link>
-      {canPlan && (
-        <Link to="/planning">
-          <Button size="sm" variant="outline" className="font-display tracking-wide text-xs whitespace-nowrap min-h-[36px]">
-            <BarChart3 className="h-3.5 w-3.5 mr-1" /> Planning
-          </Button>
-        </Link>
-      )}
-    </div>
+    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-card border-t border-border" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <div className="flex items-stretch h-[60px]">
+        {tabs.map((tab: any) => (
+          <Link
+            key={tab.to}
+            to={tab.to}
+            className={cn(
+              "flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-display uppercase tracking-wider transition-colors",
+              tab.active ? "text-primary" : "text-muted-foreground"
+            )}
+          >
+            {tab.isPrimary ? (
+              <div className="w-11 h-11 -mt-5 rounded-full bg-primary flex items-center justify-center shadow-lg ring-4 ring-background">
+                <tab.icon className="h-5 w-5 text-primary-foreground" />
+              </div>
+            ) : (
+              <>
+                <tab.icon className={cn("h-5 w-5", tab.active ? "text-primary" : "text-muted-foreground")} />
+                <span>{tab.label}</span>
+              </>
+            )}
+          </Link>
+        ))}
+        {/* Receiver intake link as extra tab */}
+        {isReceiver && business?.public_intake_token && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-0.5">
+            <SupplierIntakeLinkDialog intakeToken={business.public_intake_token} compact />
+          </div>
+        )}
+      </div>
+    </nav>
   );
 }
 
@@ -156,7 +188,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <SidebarContent />
       </aside>
 
-      {/* Mobile overlay */}
+      {/* Mobile overlay drawer */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
@@ -174,25 +206,26 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* Main content */}
       <div className="flex-1 lg:ml-60 flex flex-col min-h-screen">
         {/* Mobile header */}
-        <header className="lg:hidden sticky top-0 z-20 border-b border-border bg-card px-3 py-2.5 flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} className="shrink-0">
+        <header className="lg:hidden sticky top-0 z-20 border-b border-border bg-card px-4 py-3 flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} className="shrink-0 -ml-2">
             <Menu className="h-5 w-5" />
           </Button>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-primary">
               <Package className="h-3.5 w-3.5 text-primary-foreground" />
             </div>
             <span className="font-display text-sm tracking-tight">FRESHDOCK</span>
           </div>
-          <div className="flex-1 flex justify-end">
-            <MobileActionBar />
-          </div>
         </header>
 
-        <main className="flex-1">
+        {/* Page content — extra bottom padding for mobile nav bar */}
+        <main className="flex-1 pb-[72px] lg:pb-0">
           {children}
         </main>
       </div>
+
+      {/* Mobile bottom tab bar */}
+      <MobileBottomNav />
     </div>
   );
 }
