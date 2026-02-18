@@ -121,9 +121,27 @@ export default function ReceiveDispatch() {
   const handleSaveLotNumber = async () => {
     if (!id) return;
     setSavingLot(true);
-    await supabase.from('dispatches').update({ internal_lot_number: lotNumber.trim() || null } as any).eq('id', id);
-    setDispatch(prev => prev ? { ...prev, internal_lot_number: lotNumber.trim() || null } : prev);
-    toast({ title: 'Lot number saved' });
+    const trimmed = lotNumber.trim() || null;
+    await supabase.from('dispatches').update({ internal_lot_number: trimmed } as any).eq('id', id);
+    
+    // If dispatch is "received-pending-admin" and we now have a lot number, transition to fully received
+    if (trimmed && dispatch?.status === 'received-pending-admin') {
+      await supabase.from('dispatches').update({ status: 'received' }).eq('id', id);
+      if (user) {
+        await supabase.from('dispatch_events').insert({
+          dispatch_id: id,
+          event_type: 'admin_confirmed',
+          triggered_by_user_id: user.id,
+          triggered_by_role: 'staff',
+          metadata: { internal_lot_number: trimmed },
+        });
+      }
+      setDispatch(prev => prev ? { ...prev, internal_lot_number: trimmed, status: 'received' } : prev);
+      toast({ title: 'Lot number saved — Consignment complete', description: 'Status updated to Received.' });
+    } else {
+      setDispatch(prev => prev ? { ...prev, internal_lot_number: trimmed } : prev);
+      toast({ title: 'Lot number saved' });
+    }
     setSavingLot(false);
   };
 
@@ -222,21 +240,28 @@ export default function ReceiveDispatch() {
       });
       setDispatch(prev => prev ? { ...prev, status: 'partially-received' } : prev);
     } else {
-      // Full receive
-      const newStatus = issues.length > 0 ? 'issue' : 'received';
+      // Full receive — if no lot number, it's "received, pending admin"
+      const hasLot = !!(lotNumber.trim() || dispatch?.internal_lot_number);
+      const newStatus = issues.length > 0 ? 'issue' : hasLot ? 'received' : 'received-pending-admin';
       await supabase.from('dispatches').update({ status: newStatus }).eq('id', id);
       await supabase.from('dispatch_events').insert({
         dispatch_id: id,
-        event_type: 'received',
+        event_type: hasLot ? 'received' : 'received_pending_admin',
         triggered_by_user_id: user.id,
         triggered_by_role: 'staff',
         metadata: { internal_lot_number: lotNumber.trim() || null },
       });
       toast({
-        title: issues.length > 0 ? 'Stock Received with Issues' : 'Stock Received — Consignment Complete',
+        title: issues.length > 0 
+          ? 'Stock Received with Issues' 
+          : hasLot 
+            ? 'Stock Received — Consignment Complete' 
+            : 'Stock Received — Pending Admin',
         description: issues.length > 0
           ? `${dispatch?.display_id} received. ${issues.length} issue(s) flagged.`
-          : `${dispatch?.display_id} received in full.`,
+          : hasLot
+            ? `${dispatch?.display_id} received in full.`
+            : `${dispatch?.display_id} received by warehouse. Awaiting lot number from admin.`,
       });
       setDispatch(prev => prev ? { ...prev, status: newStatus } : prev);
     }
@@ -351,6 +376,14 @@ export default function ReceiveDispatch() {
           {dispatch.temperature_zone && <span>Temp: <strong className="text-foreground capitalize">{dispatch.temperature_zone}</strong></span>}
           {dispatch.commodity_class && <span>Class: <strong className="text-foreground capitalize">{dispatch.commodity_class.replace('_', ' ')}</strong></span>}
         </div>
+
+        {/* Pending Admin Banner */}
+        {dispatch.status === 'received-pending-admin' && (
+          <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <p className="text-sm font-medium text-amber-800">Stock received by warehouse — awaiting lot number from admin</p>
+            <p className="text-xs text-amber-700 mt-1">Enter the Internal Lot Number below to complete this consignment.</p>
+          </div>
+        )}
 
         {/* Internal Lot Number — receiver only */}
         {isReceiver && dispatch.status !== 'received' && (
