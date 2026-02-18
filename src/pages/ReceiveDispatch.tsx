@@ -244,16 +244,22 @@ export default function ReceiveDispatch() {
 
   const handleMarkArrived = async () => {
     if (!id || !user) return;
+
+    // Save lot number if entered at arrival
+    if (lotNumber.trim()) {
+      await supabase.from('dispatches').update({ internal_lot_number: lotNumber.trim() } as any).eq('id', id);
+    }
+
     await supabase.from('dispatches').update({ status: 'arrived' }).eq('id', id);
     await supabase.from('dispatch_events').insert({
       dispatch_id: id,
       event_type: 'arrived',
       triggered_by_user_id: user.id,
       triggered_by_role: role || 'staff',
-      metadata: {},
+      metadata: { internal_lot_number: lotNumber.trim() || null },
     });
-    toast({ title: 'Marked as Arrived' });
-    setDispatch(prev => prev ? { ...prev, status: 'arrived' } : prev);
+    toast({ title: 'Marked as Arrived', description: lotNumber.trim() ? `Lot # ${lotNumber.trim()} saved.` : undefined });
+    setDispatch(prev => prev ? { ...prev, status: 'arrived', internal_lot_number: lotNumber.trim() || prev.internal_lot_number } : prev);
   };
 
   const handleGenerateDA = async () => {
@@ -360,7 +366,9 @@ export default function ReceiveDispatch() {
                   placeholder="e.g. LOT-20250218-001"
                   className="h-12 text-lg font-display"
                 />
-                <p className="text-xs text-muted-foreground">Your internal warehouse lot/batch reference for this delivery</p>
+                <p className="text-xs text-muted-foreground">
+                  Enter your warehouse lot/batch number when the truck arrives — admin can see at a glance if stock has been booked in
+                </p>
               </div>
               <Button onClick={handleSaveLotNumber} disabled={savingLot} variant="outline" className="font-display h-12 sm:self-start">
                 {savingLot ? 'Saving...' : 'Save'}
