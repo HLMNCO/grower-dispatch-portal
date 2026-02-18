@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
-import { CalendarIcon, Plus, Trash2, Send, Package, Save, Thermometer, Snowflake, IceCreamCone, FileText, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Send, Package, Save, Thermometer, Snowflake, IceCreamCone, FileText, ArrowRight, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -78,6 +78,8 @@ export default function SupplierDispatchForm() {
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false);
 
   useEffect(() => {
     if (business) {
@@ -89,9 +91,38 @@ export default function SupplierDispatchForm() {
 
   useEffect(() => {
     const templateId = searchParams.get('template');
+    const repeatId = searchParams.get('repeat');
     if (templateId && templates.length > 0) {
       const tmpl = templates.find(t => t.id === templateId);
       if (tmpl) applyTemplate(tmpl);
+    } else if (repeatId && !templateId) {
+      // Pre-fill from a repeated dispatch
+      (async () => {
+        const { data: src } = await supabase
+          .from('dispatches')
+          .select('*, dispatch_items(*)')
+          .eq('id', repeatId)
+          .single();
+        if (!src) return;
+        if (src.carrier) setCarrier(src.carrier);
+        if (src.temperature_zone) setTemperatureZone(src.temperature_zone);
+        if (src.commodity_class) setCommodityClass(src.commodity_class);
+        if (src.total_pallets) setTotalPallets(String(src.total_pallets));
+        if (src.receiver_business_id) setSelectedReceiver(src.receiver_business_id);
+        if (src.pallet_type) setPalletType(src.pallet_type);
+        if (src.notes) setNotes(src.notes);
+        if (src.dispatch_items && src.dispatch_items.length > 0) {
+          setItems(src.dispatch_items.map((i: any) => ({
+            product: i.product || '',
+            variety: i.variety || '',
+            size: i.size || '',
+            trayType: i.tray_type || '',
+            quantity: i.quantity || 0,
+            weight: i.unit_weight || 0,
+          })));
+        }
+        toast({ title: 'Dispatch repeated', description: 'Update dates and quantities as needed.' });
+      })();
     }
   }, [templates, searchParams]);
 
@@ -173,10 +204,37 @@ export default function SupplierDispatchForm() {
   const totalQuantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
   const totalWeight = items.reduce((sum, item) => sum + ((item.quantity || 0) * (item.weight || 0)), 0);
 
+  const checkForDuplicate = async (): Promise<boolean> => {
+    if (!business || !dispatchDate) return false;
+    setCheckingDuplicate(true);
+    const dateStr = format(dispatchDate, 'yyyy-MM-dd');
+    const { data } = await supabase
+      .from('dispatches')
+      .select('id, display_id, grower_name, dispatch_date, total_pallets')
+      .eq('supplier_business_id', business.id)
+      .eq('dispatch_date', dateStr)
+      .eq('grower_name', growerName);
+    setCheckingDuplicate(false);
+    if (data && data.length > 0) {
+      const match = data[0];
+      setDuplicateWarning(
+        `A dispatch from ${match.grower_name} on ${format(new Date(match.dispatch_date), 'dd MMM')} already exists (${match.display_id}). Submit anyway?`
+      );
+      return true;
+    }
+    return false;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !dispatchDate) return;
 
+    // Check for duplicate (skip if user already confirmed)
+    if (!duplicateWarning) {
+      const isDuplicate = await checkForDuplicate();
+      if (isDuplicate) return; // Show warning, user must confirm
+    }
+    setDuplicateWarning(null);
     setSubmitting(true);
 
     const { data: dispatch, error: dispatchError } = await supabase
@@ -561,8 +619,24 @@ export default function SupplierDispatchForm() {
           <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Special handling instructions, ripeness notes, etc." rows={3} />
         </section>
 
-        <Button type="submit" size="lg" className="w-full font-display tracking-wide min-h-[56px]" disabled={submitting}>
-          <Send className="h-4 w-4 mr-2" /> {submitting ? 'Submitting...' : 'Submit Delivery Advice'}
+        {duplicateWarning && (
+          <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 space-y-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-800 dark:text-amber-300">{duplicateWarning}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" size="sm" variant="outline" className="font-display border-amber-500/50 text-amber-700">
+                Submit Anyway
+              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setDuplicateWarning(null)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+        <Button type="submit" size="lg" className="w-full font-display tracking-wide min-h-[56px]" disabled={submitting || checkingDuplicate}>
+          <Send className="h-4 w-4 mr-2" /> {submitting ? 'Submitting...' : checkingDuplicate ? 'Checking...' : 'Submit Delivery Advice'}
         </Button>
 
         <Button type="button" variant="secondary" size="lg" className="w-full font-display tracking-wide min-h-[44px]" onClick={() => setShowSaveTemplate(true)}>
