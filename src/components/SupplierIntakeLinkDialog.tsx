@@ -83,9 +83,16 @@ export default function SupplierIntakeLinkDialog({ intakeToken, compact }: Props
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="font-display tracking-wide">
-          <Link2 className="h-4 w-4 mr-1" /> Grower Submission Link
-        </Button>
+        {compact ? (
+          <button className="flex flex-col items-center justify-center gap-0.5 text-[10px] font-display uppercase tracking-wider text-muted-foreground w-full h-full">
+            <Link2 className="h-5 w-5" />
+            <span>Intake</span>
+          </button>
+        ) : (
+          <Button size="sm" variant="outline" className="font-display tracking-wide">
+            <Link2 className="h-4 w-4 mr-1" /> Grower Submission Link
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
