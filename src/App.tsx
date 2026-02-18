@@ -11,8 +11,6 @@ import Dashboard from "./pages/Dashboard";
 import SupplierForm from "./pages/SupplierForm";
 import SupplierHome from "./pages/SupplierHome";
 import SupplierDispatchDetail from "./pages/SupplierDispatchDetail";
-import TransporterDashboard from "./pages/TransporterDashboard";
-import TransporterDispatchDetail from "./pages/TransporterDispatchDetail";
 import ReceiveDispatch from "./pages/ReceiveDispatch";
 import InboundPlanning from "./pages/InboundPlanning";
 import AuthPage from "./pages/AuthPage";
@@ -22,6 +20,7 @@ import ReceiverVerifyPage from "./pages/ReceiverVerifyPage";
 import SupplierTemplatesPage from "./pages/SupplierTemplatesPage";
 import PublicSubmitPage from "./pages/PublicSubmitPage";
 import ShortLinkRedirect from "./pages/ShortLinkRedirect";
+import { AppLayout } from "./components/AppLayout";
 
 const queryClient = new QueryClient();
 
@@ -45,14 +44,16 @@ function RoleBasedHome() {
 
   useEffect(() => {
     if (roleLoaded && !role) {
-      toast.error("Your account role isn't set up yet. Contact Ten Farms to get access.");
+      toast.error("Your account isn't set up yet. Contact Ten Farms to get access.");
+    }
+    if (roleLoaded && role === 'transporter') {
+      toast.error("Transporter accounts are no longer active. Contact Ten Farms for access.");
     }
   }, [roleLoaded, role]);
 
   if (loading || !roleLoaded) return <BrandedLoading />;
-  if (!role) return <Navigate to="/auth" replace />;
+  if (!role || role === 'transporter') return <Navigate to="/auth" replace />;
   if (role === 'supplier') return <Navigate to="/dispatch" replace />;
-  if (role === 'transporter') return <Navigate to="/transporter" replace />;
   return <Dashboard />;
 }
 
@@ -60,23 +61,19 @@ const AppRoutes = () => (
   <BrowserRouter>
     <Routes>
       <Route path="/auth" element={<AuthRoute><AuthPage /></AuthRoute>} />
-      <Route path="/" element={<ProtectedRoute><RoleBasedHome /></ProtectedRoute>} />
-      {/* Supplier routes */}
-      <Route path="/dispatch" element={<ProtectedRoute><SupplierHome /></ProtectedRoute>} />
-      <Route path="/dispatch/new" element={<ProtectedRoute><SupplierForm /></ProtectedRoute>} />
-      <Route path="/dispatch/:id" element={<ProtectedRoute><SupplierDispatchDetail /></ProtectedRoute>} />
-      <Route path="/supplier/templates" element={<ProtectedRoute><SupplierTemplatesPage /></ProtectedRoute>} />
-      {/* Transporter routes */}
-      <Route path="/transporter" element={<ProtectedRoute><TransporterDashboard /></ProtectedRoute>} />
-      <Route path="/transporter/dispatch/:id" element={<ProtectedRoute><TransporterDispatchDetail /></ProtectedRoute>} />
-      {/* Receiver routes */}
-      <Route path="/receive/:id" element={<ProtectedRoute><ReceiveDispatch /></ProtectedRoute>} />
-      <Route path="/planning" element={<ProtectedRoute><InboundPlanning /></ProtectedRoute>} />
-      <Route path="/receiver/verify" element={<ProtectedRoute><ReceiverVerifyPage /></ProtectedRoute>} />
       {/* Public routes */}
       <Route path="/dispatch/scan/:token" element={<QRScanPage />} />
       <Route path="/submit/:token" element={<PublicSubmitPage />} />
       <Route path="/s/:code" element={<ShortLinkRedirect />} />
+      {/* Protected routes with layout */}
+      <Route path="/" element={<ProtectedRoute><AppLayout><RoleBasedHome /></AppLayout></ProtectedRoute>} />
+      <Route path="/dispatch" element={<ProtectedRoute><AppLayout><SupplierHome /></AppLayout></ProtectedRoute>} />
+      <Route path="/dispatch/new" element={<ProtectedRoute><AppLayout><SupplierForm /></AppLayout></ProtectedRoute>} />
+      <Route path="/dispatch/:id" element={<ProtectedRoute><AppLayout><SupplierDispatchDetail /></AppLayout></ProtectedRoute>} />
+      <Route path="/supplier/templates" element={<ProtectedRoute><AppLayout><SupplierTemplatesPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/receive/:id" element={<ProtectedRoute><AppLayout><ReceiveDispatch /></AppLayout></ProtectedRoute>} />
+      <Route path="/planning" element={<ProtectedRoute><AppLayout><InboundPlanning /></AppLayout></ProtectedRoute>} />
+      <Route path="/receiver/verify" element={<ProtectedRoute><AppLayout><ReceiverVerifyPage /></AppLayout></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </BrowserRouter>

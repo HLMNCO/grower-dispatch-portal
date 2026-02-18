@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Package, Truck, Navigation } from 'lucide-react';
+import { Package, Sprout } from 'lucide-react';
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ export default function AuthPage() {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [role, setRole] = useState<'supplier' | 'staff' | 'transporter'>('supplier');
+  const [role, setRole] = useState<'supplier' | 'staff'>('supplier');
 
   // Business info
   const [businessName, setBusinessName] = useState('');
@@ -55,13 +55,12 @@ export default function AuthPage() {
     }
     setLoading(true);
 
-    // 1. Create user
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: signupEmail,
       password: signupPassword,
       options: {
         emailRedirectTo: window.location.origin,
-        data: { display_name: displayName, role: role === 'staff' ? 'staff' : role === 'transporter' ? 'transporter' : 'supplier' },
+        data: { display_name: displayName, role: role === 'staff' ? 'staff' : 'supplier' },
       },
     });
 
@@ -71,11 +70,10 @@ export default function AuthPage() {
       return;
     }
 
-    // 2. Create business
     const { data: business, error: bizError } = await supabase.from('businesses').insert({
       owner_id: authData.user.id,
       name: businessName,
-      business_type: role === 'staff' ? 'receiver' : role === 'transporter' ? 'transporter' : 'supplier',
+      business_type: role === 'staff' ? 'receiver' : 'supplier',
       abn: abn || null,
       city: city || null,
       state: state || null,
@@ -91,7 +89,6 @@ export default function AuthPage() {
       return;
     }
 
-    // 3. Update profile with business_id
     if (business) {
       await supabase.from('profiles').update({
         business_id: business.id,
@@ -144,27 +141,21 @@ export default function AuthPage() {
 
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-5">
-                {/* Role Selection */}
+                {/* Role Selection — only 2 options */}
                 <div className="space-y-2">
                   <Label>I am a...</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button type="button" onClick={() => setRole('staff')}
-                      className={`p-3 rounded-lg border text-left text-sm transition-all ${role === 'staff' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/30'}`}>
-                      <Package className="h-4 w-4 mb-1 text-primary" />
-                      <div className="font-medium">Receiver</div>
-                      <div className="text-xs text-muted-foreground">Wholesale, receive</div>
-                    </button>
+                  <div className="grid grid-cols-2 gap-3">
                     <button type="button" onClick={() => setRole('supplier')}
-                      className={`p-3 rounded-lg border text-left text-sm transition-all ${role === 'supplier' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/30'}`}>
-                      <Truck className="h-4 w-4 mb-1 text-primary" />
-                      <div className="font-medium">Supplier</div>
-                      <div className="text-xs text-muted-foreground">Grow & dispatch</div>
+                      className={`p-4 rounded-lg border text-left text-sm transition-all ${role === 'supplier' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/30'}`}>
+                      <Sprout className="h-5 w-5 mb-1.5 text-primary" />
+                      <div className="font-display font-bold">Grower</div>
+                      <div className="text-xs text-muted-foreground">I send produce to Ten Farms</div>
                     </button>
-                    <button type="button" onClick={() => setRole('transporter')}
-                      className={`p-3 rounded-lg border text-left text-sm transition-all ${role === 'transporter' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/30'}`}>
-                      <Navigation className="h-4 w-4 mb-1 text-primary" />
-                      <div className="font-medium">Transporter</div>
-                      <div className="text-xs text-muted-foreground">Carry & deliver</div>
+                    <button type="button" onClick={() => setRole('staff')}
+                      className={`p-4 rounded-lg border text-left text-sm transition-all ${role === 'staff' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/30'}`}>
+                      <Package className="h-5 w-5 mb-1.5 text-primary" />
+                      <div className="font-display font-bold">Ten Farms</div>
+                      <div className="text-xs text-muted-foreground">I manage receiving</div>
                     </button>
                   </div>
                 </div>
@@ -178,12 +169,12 @@ export default function AuthPage() {
                 {/* Business Info */}
                 <div className="p-4 rounded-lg border border-border bg-muted/30 space-y-3">
                   <h3 className="font-display text-xs uppercase tracking-widest text-muted-foreground">
-                    {role === 'staff' ? 'Business Details' : role === 'transporter' ? 'Transport Company Details' : 'Farm / Business Details'}
+                    {role === 'staff' ? 'Business Details' : 'Farm / Business Details'}
                   </h3>
                   <div className="space-y-2">
-                    <Label>{role === 'staff' ? 'Business Name *' : role === 'transporter' ? 'Company Name *' : 'Farm / Business Name *'}</Label>
+                    <Label>{role === 'staff' ? 'Business Name *' : 'Farm / Business Name *'}</Label>
                     <Input value={businessName} onChange={e => setBusinessName(e.target.value)} required
-                      placeholder={role === 'staff' ? 'e.g. Metro Fresh Wholesale' : role === 'transporter' ? 'e.g. Swift Freight Logistics' : 'e.g. Valley Fresh Farms'} />
+                      placeholder={role === 'staff' ? 'e.g. Ten Farms' : 'e.g. Valley Fresh Farms'} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
