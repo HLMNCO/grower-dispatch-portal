@@ -343,15 +343,15 @@ export default function ReceiveDispatch() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link to="/">
-              <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
+        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Link to="/" className="shrink-0">
+              <Button variant="ghost" size="sm" className="px-2 sm:px-3"><ArrowLeft className="h-4 w-4" /><span className="hidden sm:inline ml-1">Back</span></Button>
             </Link>
-            <div className="h-6 w-px bg-border" />
-            <div>
-              <h1 className="text-lg font-display tracking-tight">{dispatch.delivery_advice_number || dispatch.display_id}</h1>
-              <p className="text-xs text-muted-foreground">{dispatch.grower_name}</p>
+            <div className="h-5 w-px bg-border shrink-0 hidden sm:block" />
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-lg font-display tracking-tight truncate">{dispatch.delivery_advice_number || dispatch.display_id}</h1>
+              <p className="text-xs text-muted-foreground truncate">{dispatch.grower_name}</p>
             </div>
           </div>
           <StatusBadge status={dispatch.status as any} />
@@ -510,7 +510,90 @@ export default function ReceiveDispatch() {
               )}
             </div>
           </div>
-          <div className="rounded-lg border border-border overflow-hidden">
+          {/* Mobile: stacked item cards */}
+          <div className="sm:hidden space-y-2">
+            {items.length === 0 && (
+              <p className="p-4 text-center text-muted-foreground text-sm">No items recorded.</p>
+            )}
+            {items.map((item) => {
+              const recQty = receivedQtys[item.id];
+              const recNum = typeof recQty === 'number' ? recQty : null;
+              const variance = recNum !== null ? recNum - item.quantity : null;
+              const varianceClass = variance === null ? '' : variance < 0 ? 'text-destructive font-bold' : variance > 0 ? 'text-amber-600 font-bold' : 'text-primary';
+              return (
+                <div key={item.id} className="p-4 rounded-lg border border-border bg-card space-y-3">
+                  <div>
+                    <p className="font-medium">{item.product}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {[item.variety, item.size, item.tray_type].filter(Boolean).join(' · ') || 'No details'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">DA Qty</p>
+                      <p className="font-display font-bold text-lg">{item.quantity}</p>
+                    </div>
+                    {isReceiver && dispatch.status !== 'received' ? (
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Received</p>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={recQty === '' || recQty === null ? '' : recQty}
+                          onChange={e => setReceivedQtys(prev => ({
+                            ...prev,
+                            [item.id]: e.target.value === '' ? '' : Number(e.target.value),
+                          }))}
+                          placeholder={String(item.quantity)}
+                          className="h-12 text-center font-display text-lg"
+                          inputMode="numeric"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Received</p>
+                        <p className="font-display font-bold text-lg">{item.received_quantity ?? '-'}</p>
+                      </div>
+                    )}
+                    <div className="w-12 text-right">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Var</p>
+                      <p className={`font-display font-bold text-lg ${varianceClass}`}>
+                        {variance !== null ? (variance > 0 ? `+${variance}` : variance === 0 ? '✓' : variance) : '—'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {items.length > 0 && (
+              <div className="p-3 rounded-lg border border-border bg-muted/30 flex items-center justify-between">
+                <span className="font-display text-xs uppercase tracking-wider text-muted-foreground">Total</span>
+                <div className="flex items-center gap-6">
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">DA</p>
+                    <p className="font-display font-bold">{totalQty}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Received</p>
+                    <p className="font-display font-bold">{hasAnyReceivedQty ? totalReceivedQty : '-'}</p>
+                  </div>
+                  <div className={`text-right font-display font-bold ${
+                    hasAnyReceivedQty
+                      ? (totalReceivedQty - totalQty < 0 ? 'text-destructive' : totalReceivedQty - totalQty > 0 ? 'text-amber-600' : 'text-primary')
+                      : ''
+                  }`}>
+                    <p className="text-xs text-muted-foreground font-normal">Var</p>
+                    {hasAnyReceivedQty
+                      ? (totalReceivedQty - totalQty > 0 ? `+${totalReceivedQty - totalQty}` : totalReceivedQty - totalQty === 0 ? '✓' : totalReceivedQty - totalQty)
+                      : '-'}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop: full table */}
+          <div className="hidden sm:block rounded-lg border border-border overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -530,7 +613,6 @@ export default function ReceiveDispatch() {
                     const recNum = typeof recQty === 'number' ? recQty : null;
                     const variance = recNum !== null ? recNum - item.quantity : null;
                     const varianceClass = variance === null ? '' : variance < 0 ? 'text-destructive font-bold' : variance > 0 ? 'text-amber-600 font-bold' : 'text-primary';
-                    
                     return (
                       <tr key={item.id} className="border-t border-border">
                         <td className="p-3 font-medium">{item.product}</td>
@@ -570,11 +652,11 @@ export default function ReceiveDispatch() {
                       <td className="p-3 text-right font-display font-bold">{totalQty}</td>
                       <td className="p-3 text-right font-display font-bold">{hasAnyReceivedQty ? totalReceivedQty : '-'}</td>
                       <td className={`p-3 text-right font-display font-bold ${
-                        hasAnyReceivedQty 
+                        hasAnyReceivedQty
                           ? (totalReceivedQty - totalQty < 0 ? 'text-destructive' : totalReceivedQty - totalQty > 0 ? 'text-amber-600' : 'text-primary')
                           : ''
                       }`}>
-                        {hasAnyReceivedQty 
+                        {hasAnyReceivedQty
                           ? (totalReceivedQty - totalQty > 0 ? `+${totalReceivedQty - totalQty}` : totalReceivedQty - totalQty === 0 ? '✓' : totalReceivedQty - totalQty)
                           : '-'}
                       </td>
@@ -779,9 +861,9 @@ export default function ReceiveDispatch() {
           </section>
         )}
 
-        {/* Actions — receiver only */}
+        {/* Actions — receiver only — sticky on mobile */}
         {isReceiver && dispatch.status !== 'received' && (
-          <div className="flex gap-3 pt-4 border-t border-border">
+          <div className="flex gap-3 pt-4 border-t border-border sm:pb-0 pb-2">
             {dispatch.status === 'in-transit' && (
               <Button onClick={handleMarkArrived} size="lg" variant="outline" className="flex-1 font-display tracking-wide">
                 <Package className="h-4 w-4 mr-2" /> Mark as Arrived
