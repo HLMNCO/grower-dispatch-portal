@@ -7,6 +7,8 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { BrandedLoading } from "@/components/BrandedLoading";
 import { toast } from "sonner";
 import { useEffect } from "react";
+import { Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import Dashboard from "./pages/Dashboard";
 import SupplierForm from "./pages/SupplierForm";
 import SupplierHome from "./pages/SupplierHome";
@@ -40,21 +42,43 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Pending approval screen for users without a role */
+function PendingApprovalScreen() {
+  const { signOut } = useAuth();
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-md text-center space-y-6">
+        <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+          <Clock className="h-7 w-7 text-primary" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-display tracking-tight">Access Request Pending</h2>
+          <p className="text-sm text-muted-foreground">
+            Ten Farms Admin has received your request. You'll be notified via email once your account has been approved.
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground">This usually takes less than 24 hours.</p>
+        <Button variant="outline" onClick={() => signOut()}>
+          Sign Out
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /** Redirects to the correct home based on user role */
 function RoleBasedHome() {
   const { role, roleLoaded, loading } = useAuth();
 
   useEffect(() => {
-    if (roleLoaded && !role) {
-      toast.error("Your account isn't set up yet. Contact Ten Farms to get access.");
-    }
     if (roleLoaded && role === 'transporter') {
       toast.error("Transporter accounts are no longer active. Contact Ten Farms for access.");
     }
   }, [roleLoaded, role]);
 
   if (loading || !roleLoaded) return <BrandedLoading />;
-  if (!role || role === 'transporter') return <Navigate to="/auth" replace />;
+  if (!role) return <PendingApprovalScreen />;
+  if (role === 'transporter') return <Navigate to="/auth" replace />;
   if (role === 'supplier') return <Navigate to="/dispatch" replace />;
   return <Dashboard />;
 }
