@@ -446,6 +446,42 @@ export type Database = {
           },
         ]
       }
+      supplier_intake_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          grower_code: string | null
+          grower_email: string | null
+          grower_name: string
+          grower_phone: string | null
+          id: string
+          intake_token: string
+          short_code: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          grower_code?: string | null
+          grower_email?: string | null
+          grower_name: string
+          grower_phone?: string | null
+          id?: string
+          intake_token: string
+          short_code?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          grower_code?: string | null
+          grower_email?: string | null
+          grower_name?: string
+          grower_phone?: string | null
+          id?: string
+          intake_token?: string
+          short_code?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
