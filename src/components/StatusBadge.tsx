@@ -6,7 +6,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   'in-transit': { label: 'In Transit', className: 'bg-warning/15 text-warning-foreground font-semibold' },
   arrived: { label: 'Arrived', className: 'bg-success/15 text-success' },
   'partially-received': { label: 'Partially Received', className: 'bg-amber-500/15 text-amber-700 font-semibold' },
-  'received-pending-admin': { label: 'Arrived, Awaiting Entry', className: 'bg-amber-500/15 text-amber-700 font-semibold' },
+  'received-pending-admin': { label: 'Awaiting Entry', className: 'bg-amber-500/15 text-amber-700 font-semibold' },
   received: { label: 'Completed', className: 'bg-success/20 text-success font-semibold' },
   issue: { label: 'Received with Issues', className: 'bg-destructive/15 text-destructive font-semibold' },
 };
