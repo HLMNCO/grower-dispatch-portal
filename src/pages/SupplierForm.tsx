@@ -238,16 +238,19 @@ export default function SupplierDispatchForm() {
       metadata: { receiver_business_id: selectedReceiver },
     });
 
+    // Generate DA number
+    const { data: daNumber } = await supabase.rpc('generate_delivery_advice_number', { p_dispatch_id: dispatch.id });
+
     setSubmitting(false);
     toast({
       title: 'Delivery Advice Submitted',
-      description: `Your delivery advice has been submitted. Your receiver will be notified.`,
+      description: daNumber ? `${daNumber} has been submitted. Your receiver will be notified.` : `Your delivery advice has been submitted. Your receiver will be notified.`,
     });
     navigate(`/dispatch/${dispatch.id}`);
   };
 
   const tempZones = [
-    { value: 'ambient', icon: Thermometer, label: 'Ambient', desc: 'No refrigeration required' },
+    { value: 'ambient', icon: Thermometer, label: 'Ambient', desc: '12°C – 14°C (conventional)' },
     { value: 'chilled', icon: Snowflake, label: 'Chilled', desc: '2°C – 8°C' },
     { value: 'frozen', icon: IceCreamCone, label: 'Frozen', desc: 'Below 0°C' },
   ];
