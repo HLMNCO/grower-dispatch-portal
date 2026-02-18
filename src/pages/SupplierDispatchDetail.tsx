@@ -141,7 +141,7 @@ export default function SupplierDispatchDetail() {
       {/* Carrier Details */}
       <section className="rounded-lg border border-border bg-card p-5 space-y-3">
         <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">Carrier Details</h2>
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
           <div>
             <p className="text-xs text-muted-foreground">Carrier</p>
             <p className="font-medium">{dispatch.carrier || <span className="text-muted-foreground">Not entered</span>}</p>
@@ -184,16 +184,48 @@ export default function SupplierDispatchDetail() {
       {/* Line items — What's on the Truck */}
       <section className="space-y-3">
         <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">What's on the Truck</h2>
-        <div className="rounded-lg border border-border overflow-hidden">
+
+        {/* Mobile: stacked cards */}
+        <div className="sm:hidden space-y-2">
+          {items.map((item: any) => {
+            const wt = item.unit_weight ? item.quantity * item.unit_weight : (item.weight || 0);
+            return (
+              <div key={item.id} className="p-4 rounded-lg border border-border bg-card">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium">{item.product}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {[item.variety, item.size, item.tray_type].filter(Boolean).join(' · ') || 'No details'}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-display font-bold">{item.quantity} <span className="text-xs font-normal text-muted-foreground">units</span></p>
+                    {wt > 0 && <p className="text-xs text-muted-foreground">{wt.toLocaleString()} kg</p>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          <div className="p-3 rounded-lg border border-border bg-muted/30 flex items-center justify-between">
+            <span className="font-display text-xs uppercase tracking-wider text-muted-foreground">Total</span>
+            <div className="text-right">
+              <span className="font-display font-bold">{totalCtns} units</span>
+              {totalKg > 0 && <span className="text-xs text-muted-foreground ml-2">{totalKg.toLocaleString()} kg</span>}
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop: full table */}
+        <div className="hidden sm:block rounded-lg border border-border overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/50">
                 <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Product</th>
-                <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground hidden sm:table-cell">Variety</th>
-                <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground hidden sm:table-cell">Size</th>
-                <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground hidden sm:table-cell">Pack</th>
+                <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Variety</th>
+                <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Size</th>
+                <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Pack</th>
                 <th className="text-right p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Qty</th>
-                <th className="text-right p-3 font-display text-xs uppercase tracking-widest text-muted-foreground hidden sm:table-cell">Wt/Unit</th>
+                <th className="text-right p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Wt/Unit</th>
                 <th className="text-right p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Total Wt</th>
               </tr>
             </thead>
@@ -203,11 +235,11 @@ export default function SupplierDispatchDetail() {
                 return (
                   <tr key={item.id} className="border-t border-border">
                     <td className="p-3 font-medium">{item.product}</td>
-                    <td className="p-3 text-muted-foreground hidden sm:table-cell">{item.variety || '-'}</td>
-                    <td className="p-3 text-muted-foreground hidden sm:table-cell">{item.size || '-'}</td>
-                    <td className="p-3 text-muted-foreground hidden sm:table-cell">{item.tray_type || '-'}</td>
+                    <td className="p-3 text-muted-foreground">{item.variety || '-'}</td>
+                    <td className="p-3 text-muted-foreground">{item.size || '-'}</td>
+                    <td className="p-3 text-muted-foreground">{item.tray_type || '-'}</td>
                     <td className="p-3 text-right font-display">{item.quantity}</td>
-                    <td className="p-3 text-right text-muted-foreground hidden sm:table-cell">{item.unit_weight || '-'}</td>
+                    <td className="p-3 text-right text-muted-foreground">{item.unit_weight || '-'}</td>
                     <td className="p-3 text-right font-display">{wt ? `${wt.toLocaleString()} kg` : '-'}</td>
                   </tr>
                 );
@@ -215,7 +247,7 @@ export default function SupplierDispatchDetail() {
               <tr className="border-t border-border bg-muted/30">
                 <td colSpan={4} className="p-3 font-display text-xs uppercase text-muted-foreground">Total</td>
                 <td className="p-3 text-right font-display font-bold">{totalCtns}</td>
-                <td className="p-3 hidden sm:table-cell"></td>
+                <td className="p-3"></td>
                 <td className="p-3 text-right font-display font-bold">{totalKg ? `${totalKg.toLocaleString()} kg` : '-'}</td>
               </tr>
             </tbody>
