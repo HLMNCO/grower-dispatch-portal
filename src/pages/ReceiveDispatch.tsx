@@ -401,8 +401,8 @@ export default function ReceiveDispatch() {
           </section>
         )}
 
-        {/* Supplier: Generate Delivery Advice */}
-        {isSupplier && (
+        {/* Generate / Download Delivery Advice */}
+        {(isSupplier || isReceiver) && (
           <section className="space-y-3">
             <div className="flex items-center gap-3">
               {!dispatch.delivery_advice_number ? (
