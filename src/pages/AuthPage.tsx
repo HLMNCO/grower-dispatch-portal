@@ -6,12 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Package, Sprout } from 'lucide-react';
+import { Package, Sprout, Clock } from 'lucide-react';
 
 export default function AuthPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<'login' | 'signup'>('login');
+  const [requestSent, setRequestSent] = useState(false);
 
   // Login
   const [loginEmail, setLoginEmail] = useState('');
@@ -23,9 +24,8 @@ export default function AuthPage() {
   const [displayName, setDisplayName] = useState('');
   const [role, setRole] = useState<'supplier' | 'staff'>('supplier');
 
-  // Business info
+  // Supplier business info
   const [businessName, setBusinessName] = useState('');
-  const [abn, setAbn] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [phone, setPhone] = useState('');
@@ -49,11 +49,13 @@ export default function AuthPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!businessName.trim()) {
+    setLoading(true);
+
+    if (role === 'supplier' && !businessName.trim()) {
       toast({ title: 'Business name required', variant: 'destructive' });
+      setLoading(false);
       return;
     }
-    setLoading(true);
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: signupEmail,
@@ -70,38 +72,79 @@ export default function AuthPage() {
       return;
     }
 
-    const { data: business, error: bizError } = await supabase.from('businesses').insert({
-      owner_id: authData.user.id,
-      name: businessName,
-      business_type: role === 'staff' ? 'receiver' : 'supplier',
-      abn: abn || null,
-      city: city || null,
-      state: state || null,
-      phone: phone || null,
-      email: signupEmail,
-      grower_code: role === 'supplier' ? (growerCode || null) : null,
-      region: role === 'supplier' ? (region || null) : null,
-    }).select('id').single();
-
-    if (bizError) {
-      toast({ title: 'Business setup failed', description: bizError.message, variant: 'destructive' });
-      setLoading(false);
-      return;
-    }
-
-    if (business) {
-      await supabase.from('profiles').update({
-        business_id: business.id,
-        company_name: businessName,
-        display_name: displayName,
-        grower_code: role === 'supplier' ? (growerCode || null) : null,
+    if (role === 'supplier') {
+      // Suppliers create their own business
+      const { data: business, error: bizError } = await supabase.from('businesses').insert({
+        owner_id: authData.user.id,
+        name: businessName,
+        business_type: 'supplier',
+        city: city || null,
+        state: state || null,
         phone: phone || null,
-      }).eq('user_id', authData.user.id);
-    }
+        email: signupEmail,
+        grower_code: growerCode || null,
+        region: region || null,
+      }).select('id').single();
 
-    setLoading(false);
-    navigate('/');
+      if (bizError) {
+        toast({ title: 'Business setup failed', description: bizError.message, variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+
+      if (business) {
+        await supabase.from('profiles').update({
+          business_id: business.id,
+          company_name: businessName,
+          display_name: displayName,
+          grower_code: growerCode || null,
+          phone: phone || null,
+        }).eq('user_id', authData.user.id);
+      }
+
+      setLoading(false);
+      navigate('/');
+    } else {
+      // Staff: submit an access request, don't create a business
+      const { error: reqError } = await supabase.from('staff_requests').insert({
+        user_id: authData.user.id,
+        display_name: displayName,
+        email: signupEmail,
+      });
+
+      if (reqError) {
+        toast({ title: 'Request failed', description: reqError.message, variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+
+      setLoading(false);
+      setRequestSent(true);
+    }
   };
+
+  // Staff request confirmation screen
+  if (requestSent) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-md text-center space-y-6">
+          <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+            <Clock className="h-7 w-7 text-primary" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-display tracking-tight">Access Request Submitted</h2>
+            <p className="text-sm text-muted-foreground">
+              Your request to join Ten Farms has been sent. An admin will review and approve your access shortly.
+            </p>
+          </div>
+          <p className="text-xs text-muted-foreground">You'll be able to sign in once approved.</p>
+          <Button variant="outline" onClick={() => { setRequestSent(false); setTab('login'); }}>
+            Back to Sign In
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -141,7 +184,7 @@ export default function AuthPage() {
 
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-5">
-                {/* Role Selection — only 2 options */}
+                {/* Role Selection */}
                 <div className="space-y-2">
                   <Label>I am a...</Label>
                   <div className="grid grid-cols-2 gap-3">
@@ -154,49 +197,32 @@ export default function AuthPage() {
                     <button type="button" onClick={() => setRole('staff')}
                       className={`p-4 rounded-lg border text-left text-sm transition-all ${role === 'staff' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/30'}`}>
                       <Package className="h-5 w-5 mb-1.5 text-primary" />
-                      <div className="font-display font-bold">Ten Farms</div>
-                      <div className="text-xs text-muted-foreground">I manage receiving</div>
+                      <div className="font-display font-bold">Ten Farms Staff</div>
+                      <div className="text-xs text-muted-foreground">I work at Ten Farms</div>
                     </button>
                   </div>
                 </div>
 
-                {/* Personal */}
+                {/* Name */}
                 <div className="space-y-2">
                   <Label>Your Name *</Label>
                   <Input value={displayName} onChange={e => setDisplayName(e.target.value)} required placeholder="e.g. John Smith" />
                 </div>
 
-                {/* Business Info */}
-                <div className="p-4 rounded-lg border border-border bg-muted/30 space-y-3">
-                  <h3 className="font-display text-xs uppercase tracking-widest text-muted-foreground">
-                    {role === 'staff' ? 'Business Details' : 'Farm / Business Details'}
-                  </h3>
-                  <div className="space-y-2">
-                    <Label>{role === 'staff' ? 'Business Name *' : 'Farm / Business Name *'}</Label>
-                    <Input value={businessName} onChange={e => setBusinessName(e.target.value)} required
-                      placeholder={role === 'staff' ? 'e.g. Ten Farms' : 'e.g. Valley Fresh Farms'} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
+                {/* Supplier: Farm details */}
+                {role === 'supplier' && (
+                  <div className="p-4 rounded-lg border border-border bg-muted/30 space-y-3">
+                    <h3 className="font-display text-xs uppercase tracking-widest text-muted-foreground">Farm / Business Details</h3>
                     <div className="space-y-2">
-                      <Label>ABN</Label>
-                      <Input value={abn} onChange={e => setAbn(e.target.value)} placeholder="Optional" />
+                      <Label>Farm / Business Name *</Label>
+                      <Input value={businessName} onChange={e => setBusinessName(e.target.value)} required
+                        placeholder="e.g. Valley Fresh Farms" />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Phone</Label>
-                      <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Optional" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>City</Label>
-                      <Input value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Sydney" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>State</Label>
-                      <Input value={state} onChange={e => setState(e.target.value)} placeholder="e.g. NSW" />
-                    </div>
-                  </div>
-
-                  {role === 'supplier' && (
                     <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Phone</Label>
+                        <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Optional" />
+                      </div>
                       <div className="space-y-2">
                         <Label>Grower Code</Label>
                         <Input value={growerCode} onChange={e => setGrowerCode(e.target.value)} placeholder="e.g. VFF-042" />
@@ -205,9 +231,22 @@ export default function AuthPage() {
                         <Label>Region</Label>
                         <Input value={region} onChange={e => setRegion(e.target.value)} placeholder="e.g. Riverina" />
                       </div>
+                      <div className="space-y-2">
+                        <Label>State</Label>
+                        <Input value={state} onChange={e => setState(e.target.value)} placeholder="e.g. NSW" />
+                      </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+
+                {/* Staff: simple message */}
+                {role === 'staff' && (
+                  <div className="p-4 rounded-lg border border-border bg-muted/30">
+                    <p className="text-sm text-muted-foreground">
+                      Your request will be sent to Ten Farms admin for approval. You'll be able to sign in once approved.
+                    </p>
+                  </div>
+                )}
 
                 {/* Credentials */}
                 <div className="grid grid-cols-1 gap-3">
@@ -222,7 +261,7 @@ export default function AuthPage() {
                 </div>
 
                 <Button type="submit" className="w-full font-display tracking-wide" disabled={loading}>
-                  {loading ? 'Creating account...' : 'Create Account'}
+                  {loading ? 'Creating account...' : role === 'staff' ? 'Request Access' : 'Create Account'}
                 </Button>
               </form>
             </TabsContent>
