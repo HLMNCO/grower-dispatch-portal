@@ -210,7 +210,7 @@ export default function Dashboard() {
                   )}
                   <Link to="/receiver/verify">
                     <Button size="sm" variant="outline" className="font-display tracking-wide">
-                      <ClipboardCheck className="h-4 w-4 mr-1" /> Verify
+                      <ClipboardCheck className="h-4 w-4 mr-1" /> Receive
                     </Button>
                   </Link>
                   <Link to="/planning">
@@ -258,7 +258,7 @@ export default function Dashboard() {
                 )}
                 <Link to="/receiver/verify" className="shrink-0">
                   <Button size="sm" variant="outline" className="font-display tracking-wide text-xs h-8">
-                    <ClipboardCheck className="h-3.5 w-3.5 mr-1" /> Verify
+                    <ClipboardCheck className="h-3.5 w-3.5 mr-1" /> Receive
                   </Button>
                 </Link>
                 <Link to="/planning" className="shrink-0">

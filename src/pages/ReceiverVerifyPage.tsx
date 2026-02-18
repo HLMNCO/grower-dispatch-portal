@@ -116,7 +116,7 @@ export default function ReceiverVerifyPage() {
           </Link>
           <div className="h-6 w-px bg-border" />
           <div>
-            <h1 className="text-lg font-display tracking-tight">Verify Inbound Delivery</h1>
+            <h1 className="text-lg font-display tracking-tight">Receive Produce</h1>
             <p className="text-xs text-muted-foreground">Search by DA number, carrier con note, or scan QR</p>
           </div>
         </div>
