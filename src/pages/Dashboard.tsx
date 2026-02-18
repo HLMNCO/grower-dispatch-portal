@@ -21,6 +21,7 @@ interface DispatchRow {
   grower_code: string | null;
   transporter_con_note_number: string;
   delivery_advice_number: string | null;
+  internal_lot_number: string | null;
   carrier: string | null;
   dispatch_date: string;
   expected_arrival: string | null;
@@ -38,6 +39,7 @@ const statCards = [
   { label: 'In Transit', icon: Truck, filterStatus: 'in-transit' },
   { label: 'Arrived', icon: Package, filterStatus: 'arrived' },
   { label: 'Issues', icon: AlertTriangle, filterStatus: 'issue' },
+  { label: 'Pending Admin', icon: FileText, filterStatus: 'received-pending-admin' },
   { label: 'Received', icon: CheckCircle2, filterStatus: 'received' },
 ];
 
@@ -146,6 +148,7 @@ export default function Dashboard() {
       d.grower_name.toLowerCase().includes(search.toLowerCase()) ||
       d.transporter_con_note_number.toLowerCase().includes(search.toLowerCase()) ||
       (d.delivery_advice_number || '').toLowerCase().includes(search.toLowerCase()) ||
+      (d.internal_lot_number || '').toLowerCase().includes(search.toLowerCase()) ||
       d.display_id.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'all' || d.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -276,7 +279,7 @@ export default function Dashboard() {
             {isReceiver && <TomorrowSummary dispatches={dispatches} />}
 
             {/* Stat Cards — 3+2 layout on mobile, 5 on desktop */}
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
               {statCards.map(card => {
                 const count = counts[card.filterStatus] || 0;
                 const isActive = statusFilter === card.filterStatus;
@@ -295,7 +298,7 @@ export default function Dashboard() {
             <div className="flex gap-2 sm:gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search by grower, DA number, or ID..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+                <Input placeholder="Search by grower, lot number, or ID..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
               </div>
               {statusFilter !== 'all' && (
                 <Button variant="ghost" size="sm" onClick={() => setStatusFilter('all')}>
@@ -335,7 +338,7 @@ export default function Dashboard() {
                         <tr className="bg-muted/50">
                           <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">ID</th>
                           <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Grower</th>
-                          <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">DA Number</th>
+                          <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Lot #</th>
                           <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Dispatch</th>
                           <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">ETA</th>
                           <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Pallets</th>
@@ -352,7 +355,7 @@ export default function Dashboard() {
                               <div className="font-medium">{dispatch.grower_name}</div>
                               <div className="text-xs text-muted-foreground">{dispatch.grower_code || '-'}</div>
                             </td>
-                            <td className="p-3 font-display text-xs">{dispatch.delivery_advice_number || '-'}</td>
+                            <td className="p-3 font-display text-xs">{dispatch.internal_lot_number || <span className="text-muted-foreground/50">—</span>}</td>
                             <td className="p-3 text-muted-foreground">{format(new Date(dispatch.dispatch_date), 'dd MMM')}</td>
                             <td className="p-3 text-muted-foreground">{dispatch.expected_arrival ? format(new Date(dispatch.expected_arrival), 'dd MMM') : '-'}</td>
                             <td className="p-3">{dispatch.total_pallets}</td>
