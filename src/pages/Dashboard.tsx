@@ -170,9 +170,9 @@ export default function Dashboard() {
             <div className="hidden sm:flex gap-2 items-center">
               {isSupplier && (
                 <>
-                  <Link to="/dispatch">
+                  <Link to="/dispatch/new">
                     <Button size="sm" className="font-display tracking-wide">
-                      <Plus className="h-4 w-4 mr-1" /> New Dispatch
+                      <Plus className="h-4 w-4 mr-1" /> New Delivery Advice
                     </Button>
                   </Link>
                   <Link to="/supplier/templates">
@@ -216,7 +216,7 @@ export default function Dashboard() {
           <div className="flex sm:hidden gap-2 mt-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
             {isSupplier && (
               <>
-                <Link to="/dispatch" className="shrink-0">
+                <Link to="/dispatch/new" className="shrink-0">
                   <Button size="sm" className="font-display tracking-wide text-xs h-8">
                     <Plus className="h-3.5 w-3.5 mr-1" /> New
                   </Button>

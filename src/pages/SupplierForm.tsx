@@ -253,10 +253,10 @@ export default function SupplierDispatchForm() {
 
     setSubmitting(false);
     toast({
-      title: 'Dispatch Submitted',
+      title: 'Delivery Advice Submitted',
       description: `Your delivery advice has been submitted. Your receiver will be notified.`,
     });
-    navigate('/');
+    navigate(`/dispatch/${dispatch.id}`);
   };
 
   return (

@@ -245,6 +245,7 @@ export type Database = {
           carrier: string | null
           commodity_class: string | null
           created_at: string
+          current_eta: string | null
           delivery_advice_generated_at: string | null
           delivery_advice_number: string | null
           dispatch_date: string
@@ -277,6 +278,7 @@ export type Database = {
           carrier?: string | null
           commodity_class?: string | null
           created_at?: string
+          current_eta?: string | null
           delivery_advice_generated_at?: string | null
           delivery_advice_number?: string | null
           dispatch_date: string
@@ -309,6 +311,7 @@ export type Database = {
           carrier?: string | null
           commodity_class?: string | null
           created_at?: string
+          current_eta?: string | null
           delivery_advice_generated_at?: string | null
           delivery_advice_number?: string | null
           dispatch_date?: string

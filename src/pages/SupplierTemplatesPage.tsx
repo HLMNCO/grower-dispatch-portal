@@ -94,12 +94,12 @@ export default function SupplierTemplatesPage() {
             <div className="h-6 w-px bg-border" />
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
-              <h1 className="text-lg font-display tracking-tight">Dispatch Templates</h1>
+              <h1 className="text-lg font-display tracking-tight">Delivery Advice Templates</h1>
             </div>
           </div>
-          <Link to="/dispatch">
+          <Link to="/dispatch/new">
             <Button size="sm" className="font-display">
-              <Plus className="h-4 w-4 mr-1" /> New Dispatch
+              <Plus className="h-4 w-4 mr-1" /> New Delivery Advice
             </Button>
           </Link>
         </div>
@@ -112,9 +112,9 @@ export default function SupplierTemplatesPage() {
           <div className="text-center py-12 space-y-3">
             <FileText className="h-12 w-12 text-muted-foreground mx-auto" />
             <h3 className="font-display text-lg">No templates yet</h3>
-            <p className="text-sm text-muted-foreground">Create a dispatch and use "Save as Template" to save it for future use.</p>
-            <Link to="/dispatch">
-              <Button className="mt-4 font-display">Create First Dispatch</Button>
+            <p className="text-sm text-muted-foreground">When creating a delivery advice, use "Save as Template" to reuse your common dispatch configurations.</p>
+            <Link to="/dispatch/new">
+              <Button className="mt-4 font-display">Create First Delivery Advice</Button>
             </Link>
           </div>
         ) : (
@@ -146,7 +146,7 @@ export default function SupplierTemplatesPage() {
                   variant="outline"
                   size="sm"
                   className="font-display mt-2"
-                  onClick={() => navigate(`/dispatch?template=${tmpl.id}`)}
+                  onClick={() => navigate(`/dispatch/new?template=${tmpl.id}`)}
                 >
                   <ArrowRight className="h-3.5 w-3.5 mr-1" /> Use Template
                 </Button>
