@@ -6,6 +6,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Link, useNavigate } from 'react-router-dom';
+import { PlanningSkeletons } from '@/components/Skeletons';
 
 interface PlanningDispatch {
   id: string;
@@ -207,7 +208,7 @@ export default function InboundPlanning() {
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading planning data...</div>
+          <PlanningSkeletons />
         ) : (
           <>
             {/* Daily Capacity Bars */}
