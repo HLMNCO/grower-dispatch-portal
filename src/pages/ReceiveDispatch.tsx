@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { ArrowLeft, CheckCircle2, AlertTriangle, Plus, Package, Truck, FileText, Download, Hash, SplitSquareVertical } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, AlertTriangle, Plus, Package, Truck, FileText, Download, Hash, SplitSquareVertical, Thermometer, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,6 +45,8 @@ interface DispatchDetail {
   transporter_business_id: string | null;
   internal_lot_number: string | null;
   is_split_load: boolean;
+  receiving_temperature: number | null;
+  receiving_photos: string[] | null;
 }
 
 interface ItemRow {
@@ -82,8 +84,10 @@ export default function ReceiveDispatch() {
   const [generatingDA, setGeneratingDA] = useState(false);
   const [lotNumber, setLotNumber] = useState('');
   const [savingLot, setSavingLot] = useState(false);
-  const [receivedQtys, setReceivedQtys] = useState<Record<string, number | ''>>({}); 
+  const [receivedQtys, setReceivedQtys] = useState<Record<string, number | ''>>({});
   const [savingReceived, setSavingReceived] = useState(false);
+  const [receivingTemp, setReceivingTemp] = useState<string>('');
+  const [receivingPhotos, setReceivingPhotos] = useState<string[]>([]);
 
   const isSupplier = role === 'supplier';
   const isReceiver = role === 'staff';
@@ -103,6 +107,8 @@ export default function ReceiveDispatch() {
       const d = dispatchRes.data as unknown as DispatchDetail;
       setDispatch(d);
       setLotNumber(d.internal_lot_number || '');
+      setReceivingTemp(d.receiving_temperature != null ? String(d.receiving_temperature) : '');
+      setReceivingPhotos(d.receiving_photos || []);
     }
     if (itemsRes.data) {
       const itemData = itemsRes.data as ItemRow[];
@@ -215,9 +221,13 @@ export default function ReceiveDispatch() {
       );
     }
 
-    // Save lot number if entered
-    if (lotNumber.trim()) {
-      await supabase.from('dispatches').update({ internal_lot_number: lotNumber.trim() } as any).eq('id', id);
+    // Save lot number, receiving temp, and photos
+    const updateFields: any = {};
+    if (lotNumber.trim()) updateFields.internal_lot_number = lotNumber.trim();
+    if (receivingTemp) updateFields.receiving_temperature = Number(receivingTemp);
+    if (receivingPhotos.length > 0) updateFields.receiving_photos = receivingPhotos;
+    if (Object.keys(updateFields).length > 0) {
+      await supabase.from('dispatches').update(updateFields).eq('id', id);
     }
 
     if (partial) {
@@ -477,13 +487,28 @@ export default function ReceiveDispatch() {
 
         {/* Product Lines with Stock Validation */}
         <section className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">Product Lines — Stock Validation</h2>
-            {isReceiver && dispatch.status !== 'received' && hasAnyReceivedQty && (
-              <Button onClick={handleSaveReceivedQtys} disabled={savingReceived} size="sm" variant="outline" className="font-display">
-                {savingReceived ? 'Saving...' : 'Save Received Qtys'}
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {isReceiver && dispatch.status !== 'received' && !hasAnyReceivedQty && items.length > 0 && (
+                <Button 
+                  onClick={() => {
+                    const allCorrect: Record<string, number | ''> = {};
+                    items.forEach(item => { allCorrect[item.id] = item.quantity; });
+                    setReceivedQtys(allCorrect);
+                    toast({ title: 'All quantities marked as correct' });
+                  }} 
+                  size="sm" variant="outline" className="font-display text-primary border-primary/30"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> All Correct
+                </Button>
+              )}
+              {isReceiver && dispatch.status !== 'received' && hasAnyReceivedQty && (
+                <Button onClick={handleSaveReceivedQtys} disabled={savingReceived} size="sm" variant="outline" className="font-display">
+                  {savingReceived ? 'Saving...' : 'Save Received Qtys'}
+                </Button>
+              )}
+            </div>
           </div>
           <div className="rounded-lg border border-border overflow-hidden">
             <div className="overflow-x-auto">
@@ -492,6 +517,7 @@ export default function ReceiveDispatch() {
                   <tr className="bg-muted/50">
                     <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Product</th>
                     <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Variety</th>
+                    <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Size</th>
                     <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Pack</th>
                     <th className="text-right p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">DA Qty</th>
                     <th className="text-right p-3 font-display text-xs uppercase tracking-widest text-muted-foreground min-w-[100px]">Received</th>
@@ -509,6 +535,7 @@ export default function ReceiveDispatch() {
                       <tr key={item.id} className="border-t border-border">
                         <td className="p-3 font-medium">{item.product}</td>
                         <td className="p-3 text-muted-foreground">{item.variety || '-'}</td>
+                        <td className="p-3 text-muted-foreground">{item.size || '-'}</td>
                         <td className="p-3 text-muted-foreground">{item.tray_type || '-'}</td>
                         <td className="p-3 text-right font-display">{item.quantity}</td>
                         <td className="p-3 text-right">
@@ -535,11 +562,11 @@ export default function ReceiveDispatch() {
                     );
                   })}
                   {items.length === 0 && (
-                    <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">No items recorded.</td></tr>
+                    <tr><td colSpan={7} className="p-4 text-center text-muted-foreground">No items recorded.</td></tr>
                   )}
                   {items.length > 0 && (
                     <tr className="border-t border-border bg-muted/30">
-                      <td colSpan={3} className="p-3 font-display text-xs uppercase tracking-wider text-muted-foreground">Total</td>
+                      <td colSpan={4} className="p-3 font-display text-xs uppercase tracking-wider text-muted-foreground">Total</td>
                       <td className="p-3 text-right font-display font-bold">{totalQty}</td>
                       <td className="p-3 text-right font-display font-bold">{hasAnyReceivedQty ? totalReceivedQty : '-'}</td>
                       <td className={`p-3 text-right font-display font-bold ${
@@ -561,6 +588,67 @@ export default function ReceiveDispatch() {
             <p className="text-xs text-muted-foreground">Enter the actual quantity received for each product. Variances will be highlighted — red for short, amber for over.</p>
           )}
         </section>
+
+        {/* Inbound Receiving — Temperature & Photos (receiver only) */}
+        {isReceiver && dispatch.status !== 'received' && (
+          <section className="space-y-3">
+            <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+              <Thermometer className="h-4 w-4" /> Inbound Receiving Check
+            </h2>
+            <div className="p-4 rounded-lg border border-border bg-card space-y-4">
+              <div className="space-y-2">
+                <Label className="font-display text-xs uppercase tracking-wider">Temperature at Receival (°C)</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={receivingTemp}
+                    onChange={e => setReceivingTemp(e.target.value)}
+                    placeholder="e.g. 4.5"
+                    className="w-32 h-10 font-display"
+                  />
+                  <span className="text-sm text-muted-foreground">°C</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="font-display text-xs uppercase tracking-wider flex items-center gap-2">
+                  <Camera className="h-3.5 w-3.5" /> Inbound Photos
+                </Label>
+                <PhotoUpload photos={receivingPhotos} onPhotosChange={setReceivingPhotos} folder="receiving" max={5} compact />
+                <p className="text-xs text-muted-foreground">Optional — snap a photo of the stock as it comes off the truck</p>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Show saved receiving data if already received */}
+        {(dispatch.status === 'received' || dispatch.status === 'received-pending-admin') && (dispatch.receiving_temperature != null || (dispatch.receiving_photos && dispatch.receiving_photos.length > 0)) && (
+          <section className="space-y-3">
+            <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+              <Thermometer className="h-4 w-4" /> Inbound Receiving Check
+            </h2>
+            <div className="p-4 rounded-lg border border-border bg-card space-y-3">
+              {dispatch.receiving_temperature != null && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Temperature at Receival</p>
+                  <p className="font-display text-lg mt-1">{dispatch.receiving_temperature}°C</p>
+                </div>
+              )}
+              {dispatch.receiving_photos && dispatch.receiving_photos.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Inbound Photos</p>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {dispatch.receiving_photos.map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="aspect-square rounded-lg overflow-hidden border border-border">
+                        <img src={url} alt={`Receiving photo ${i + 1}`} className="w-full h-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* Dispatch Photos */}
         {dispatch.photos && dispatch.photos.length > 0 && (
