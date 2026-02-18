@@ -20,6 +20,8 @@ import ReceiverVerifyPage from "./pages/ReceiverVerifyPage";
 import SupplierTemplatesPage from "./pages/SupplierTemplatesPage";
 import PublicSubmitPage from "./pages/PublicSubmitPage";
 import ShortLinkRedirect from "./pages/ShortLinkRedirect";
+import GrowersPage from "./pages/GrowersPage";
+import StaffManagementPage from "./pages/StaffManagementPage";
 import { AppLayout } from "./components/AppLayout";
 
 const queryClient = new QueryClient();
@@ -74,6 +76,8 @@ const AppRoutes = () => (
       <Route path="/receive/:id" element={<ProtectedRoute><AppLayout><ReceiveDispatch /></AppLayout></ProtectedRoute>} />
       <Route path="/planning" element={<ProtectedRoute><AppLayout><InboundPlanning /></AppLayout></ProtectedRoute>} />
       <Route path="/receiver/verify" element={<ProtectedRoute><AppLayout><ReceiverVerifyPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/growers" element={<ProtectedRoute><AppLayout><GrowersPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/staff" element={<ProtectedRoute><AppLayout><StaffManagementPage /></AppLayout></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </BrowserRouter>

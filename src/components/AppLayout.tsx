@@ -103,12 +103,12 @@ function ReceiverSidebar({ onClose }: { onClose?: () => void }) {
 
         <div className="h-px bg-sidebar-border my-3" />
 
-        <button
-          onClick={() => { sonnerToast.info("Grower management coming soon"); onClose?.(); }}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 w-full min-h-[44px]"
-        >
-          <Users className="h-4 w-4" /> Growers
-        </button>
+        {canPlan && (
+          <NavItem to="/growers" icon={Users} label="Growers" active={pathname === '/growers'} onClick={onClose} />
+        )}
+        {isAdmin && (
+          <NavItem to="/staff" icon={Users} label="Staff" active={pathname === '/staff'} onClick={onClose} />
+        )}
       </div>
 
       <div className="px-3 py-4 border-t border-sidebar-border space-y-1">
