@@ -107,6 +107,44 @@ export type Database = {
           },
         ]
       }
+      dispatch_events: {
+        Row: {
+          created_at: string
+          dispatch_id: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          triggered_by_role: string | null
+          triggered_by_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          dispatch_id: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          triggered_by_role?: string | null
+          triggered_by_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          dispatch_id?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          triggered_by_role?: string | null
+          triggered_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_events_dispatch_id_fkey"
+            columns: ["dispatch_id"]
+            isOneToOne: false
+            referencedRelation: "dispatches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispatch_items: {
         Row: {
           created_at: string
@@ -154,13 +192,62 @@ export type Database = {
           },
         ]
       }
+      dispatch_templates: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          last_used_at: string | null
+          receiver_business_id: string | null
+          template_data: Json
+          template_name: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          receiver_business_id?: string | null
+          template_data?: Json
+          template_name: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          receiver_business_id?: string | null
+          template_data?: Json
+          template_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_templates_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_templates_receiver_business_id_fkey"
+            columns: ["receiver_business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispatches: {
         Row: {
           carrier: string | null
-          con_note_number: string
+          commodity_class: string | null
           created_at: string
+          delivery_advice_generated_at: string | null
+          delivery_advice_number: string | null
           dispatch_date: string
           display_id: string
+          estimated_arrival_window_end: string | null
+          estimated_arrival_window_start: string | null
           expected_arrival: string | null
           grower_code: string | null
           grower_name: string
@@ -168,23 +255,31 @@ export type Database = {
           notes: string | null
           photos: string[] | null
           pickup_time: string | null
+          qr_code_token: string | null
           receiver_business_id: string | null
           status: string
           supplier_business_id: string | null
           supplier_id: string
           temperature_reading: number | null
+          temperature_zone: string | null
           total_pallets: number
           transporter_business_id: string | null
+          transporter_con_note_number: string
+          transporter_con_note_photo_url: string | null
           transporter_notes: string | null
           truck_number: string | null
           updated_at: string
         }
         Insert: {
           carrier?: string | null
-          con_note_number: string
+          commodity_class?: string | null
           created_at?: string
+          delivery_advice_generated_at?: string | null
+          delivery_advice_number?: string | null
           dispatch_date: string
           display_id?: string
+          estimated_arrival_window_end?: string | null
+          estimated_arrival_window_start?: string | null
           expected_arrival?: string | null
           grower_code?: string | null
           grower_name: string
@@ -192,23 +287,31 @@ export type Database = {
           notes?: string | null
           photos?: string[] | null
           pickup_time?: string | null
+          qr_code_token?: string | null
           receiver_business_id?: string | null
           status?: string
           supplier_business_id?: string | null
           supplier_id: string
           temperature_reading?: number | null
+          temperature_zone?: string | null
           total_pallets?: number
           transporter_business_id?: string | null
+          transporter_con_note_number: string
+          transporter_con_note_photo_url?: string | null
           transporter_notes?: string | null
           truck_number?: string | null
           updated_at?: string
         }
         Update: {
           carrier?: string | null
-          con_note_number?: string
+          commodity_class?: string | null
           created_at?: string
+          delivery_advice_generated_at?: string | null
+          delivery_advice_number?: string | null
           dispatch_date?: string
           display_id?: string
+          estimated_arrival_window_end?: string | null
+          estimated_arrival_window_start?: string | null
           expected_arrival?: string | null
           grower_code?: string | null
           grower_name?: string
@@ -216,13 +319,17 @@ export type Database = {
           notes?: string | null
           photos?: string[] | null
           pickup_time?: string | null
+          qr_code_token?: string | null
           receiver_business_id?: string | null
           status?: string
           supplier_business_id?: string | null
           supplier_id?: string
           temperature_reading?: number | null
+          temperature_zone?: string | null
           total_pallets?: number
           transporter_business_id?: string | null
+          transporter_con_note_number?: string
+          transporter_con_note_photo_url?: string | null
           transporter_notes?: string | null
           truck_number?: string | null
           updated_at?: string
@@ -359,6 +466,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_delivery_advice_number: {
+        Args: { p_dispatch_id: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
