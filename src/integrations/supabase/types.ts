@@ -260,6 +260,7 @@ export type Database = {
           grower_name: string
           id: string
           internal_lot_number: string | null
+          is_split_load: boolean
           notes: string | null
           photos: string[] | null
           pickup_time: string | null
@@ -294,6 +295,7 @@ export type Database = {
           grower_name: string
           id?: string
           internal_lot_number?: string | null
+          is_split_load?: boolean
           notes?: string | null
           photos?: string[] | null
           pickup_time?: string | null
@@ -328,6 +330,7 @@ export type Database = {
           grower_name?: string
           id?: string
           internal_lot_number?: string | null
+          is_split_load?: boolean
           notes?: string | null
           photos?: string[] | null
           pickup_time?: string | null
