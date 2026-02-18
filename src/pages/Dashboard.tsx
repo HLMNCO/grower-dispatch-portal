@@ -61,12 +61,18 @@ function TomorrowSummary({ dispatches }: { dispatches: DispatchRow[] }) {
         <p className="text-sm font-medium">
           {tomorrowArrivals.length} dispatch{tomorrowArrivals.length !== 1 ? 'es' : ''} · {totalPallets} pallet{totalPallets !== 1 ? 's' : ''} expected
         </p>
-        <div className="mt-2 grid gap-1.5">
+        <div className="mt-2 space-y-1">
           {tomorrowArrivals.map(d => (
-            <div key={d.id} className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{d.grower_name}</span>
-              <span>{d.total_pallets} plt</span>
-              {d.carrier && <span className="flex items-center gap-1"><Truck className="h-3 w-3" />{d.carrier}</span>}
+            <div key={d.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 text-sm">
+              <span className="font-medium text-foreground truncate">{d.grower_name}</span>
+              <span className="text-muted-foreground whitespace-nowrap tabular-nums">{d.total_pallets} plt</span>
+              {d.carrier ? (
+                <span className="flex items-center gap-1.5 text-muted-foreground whitespace-nowrap">
+                  <Truck className="h-3.5 w-3.5 shrink-0" />{d.carrier}
+                </span>
+              ) : (
+                <span />
+              )}
             </div>
           ))}
         </div>
