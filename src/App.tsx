@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound";
 import QRScanPage from "./pages/QRScanPage";
 import ReceiverVerifyPage from "./pages/ReceiverVerifyPage";
 import SupplierTemplatesPage from "./pages/SupplierTemplatesPage";
+import PublicSubmitPage from "./pages/PublicSubmitPage";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const AppRoutes = () => (
       <Route path="/receive/:id" element={<ProtectedRoute><ReceiveDispatch /></ProtectedRoute>} />
       <Route path="/planning" element={<ProtectedRoute><InboundPlanning /></ProtectedRoute>} />
       <Route path="/dispatch/scan/:token" element={<QRScanPage />} />
+      <Route path="/submit/:token" element={<PublicSubmitPage />} />
       <Route path="/receiver/verify" element={<ProtectedRoute><ReceiverVerifyPage /></ProtectedRoute>} />
       <Route path="/supplier/templates" element={<ProtectedRoute><SupplierTemplatesPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />

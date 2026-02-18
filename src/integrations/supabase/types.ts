@@ -27,6 +27,7 @@ export type Database = {
           name: string
           owner_id: string
           phone: string | null
+          public_intake_token: string | null
           region: string | null
           state: string | null
           updated_at: string
@@ -43,6 +44,7 @@ export type Database = {
           name: string
           owner_id: string
           phone?: string | null
+          public_intake_token?: string | null
           region?: string | null
           state?: string | null
           updated_at?: string
@@ -59,6 +61,7 @@ export type Database = {
           name?: string
           owner_id?: string
           phone?: string | null
+          public_intake_token?: string | null
           region?: string | null
           state?: string | null
           updated_at?: string
