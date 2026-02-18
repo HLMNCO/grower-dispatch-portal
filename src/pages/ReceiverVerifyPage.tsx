@@ -1,272 +1,158 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Search, ArrowLeft, Package, Truck, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
+import { format, isToday, isTomorrow, isPast, addDays } from 'date-fns';
+import { Package, Truck, Search, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
-import { DispatchTimeline } from '@/components/DispatchTimeline';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
 
-interface VerifyDispatch {
+interface QueueDispatch {
   id: string;
   display_id: string;
   grower_name: string;
-  grower_code: string | null;
-  delivery_advice_number: string | null;
-  transporter_con_note_number: string;
-  transporter_con_note_photo_url: string | null;
   carrier: string | null;
   truck_number: string | null;
   dispatch_date: string;
   expected_arrival: string | null;
-  estimated_arrival_window_start: string | null;
-  estimated_arrival_window_end: string | null;
   total_pallets: number;
   status: string;
+  internal_lot_number: string | null;
   temperature_zone: string | null;
-  commodity_class: string | null;
 }
 
-interface VerifyItem {
-  id: string;
-  product: string;
-  variety: string | null;
-  size: string | null;
-  tray_type: string | null;
-  quantity: number;
-  unit_weight: number | null;
-  weight: number | null;
+function getDisplayStatus(d: QueueDispatch) {
+  if (d.status === 'arrived' && !d.internal_lot_number) return 'received-pending-admin';
+  return d.status;
+}
+
+function arrivalLabel(d: QueueDispatch) {
+  if (!d.expected_arrival) return null;
+  const date = new Date(d.expected_arrival);
+  if (isToday(date)) return 'Today';
+  if (isTomorrow(date)) return 'Tomorrow';
+  return format(date, 'EEE, d MMM');
 }
 
 export default function ReceiverVerifyPage() {
-  const { user, business, role } = useAuth();
+  const { business } = useAuth();
   const navigate = useNavigate();
-  const [searchInput, setSearchInput] = useState('');
-  const [dispatch, setDispatch] = useState<VerifyDispatch | null>(null);
-  const [items, setItems] = useState<VerifyItem[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [searched, setSearched] = useState(false);
+  const [dispatches, setDispatches] = useState<QueueDispatch[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
-  const handleSearch = async () => {
-    if (!searchInput.trim() || !business) return;
-    setSearching(true);
-    setSearched(true);
-    setDispatch(null);
-    setItems([]);
+  useEffect(() => {
+    if (business) fetchQueue();
+  }, [business]);
 
-    const query = searchInput.trim();
-
-    // Try DA number first
-    let { data } = await supabase
+  const fetchQueue = async () => {
+    if (!business) return;
+    const { data } = await supabase
       .from('dispatches')
-      .select('*')
+      .select('id, display_id, grower_name, carrier, truck_number, dispatch_date, expected_arrival, total_pallets, status, internal_lot_number, temperature_zone')
       .eq('receiver_business_id', business.id)
-      .eq('delivery_advice_number', query)
-      .single();
+      .in('status', ['pending', 'in-transit', 'arrived', 'received-pending-admin'])
+      .order('expected_arrival', { ascending: true, nullsFirst: false });
 
-    // Try con note number
-    if (!data) {
-      const res = await supabase
-        .from('dispatches')
-        .select('*')
-        .eq('receiver_business_id', business.id)
-        .eq('transporter_con_note_number', query)
-        .single();
-      data = res.data;
-    }
-
-    if (data) {
-      setDispatch(data as unknown as VerifyDispatch);
-      const { data: itemData } = await supabase
-        .from('dispatch_items')
-        .select('*')
-        .eq('dispatch_id', data.id);
-      if (itemData) setItems(itemData as VerifyItem[]);
-    }
-
-    setSearching(false);
+    if (data) setDispatches(data as QueueDispatch[]);
+    setLoading(false);
   };
 
-  const handleMarkArrived = async () => {
-    if (!dispatch || !user) return;
-    await supabase.from('dispatches').update({ status: 'arrived' }).eq('id', dispatch.id);
-    await supabase.from('dispatch_events').insert({
-      dispatch_id: dispatch.id,
-      event_type: 'arrived',
-      triggered_by_user_id: user.id,
-      triggered_by_role: role || 'staff',
-      metadata: {},
-    });
-    toast({ title: 'Marked as Arrived' });
-    setDispatch(prev => prev ? { ...prev, status: 'arrived' } : prev);
-  };
+  const filtered = dispatches.filter(d => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      d.grower_name.toLowerCase().includes(q) ||
+      d.display_id.toLowerCase().includes(q) ||
+      (d.carrier || '').toLowerCase().includes(q)
+    );
+  });
 
-  const totalQty = items.reduce((s, i) => s + i.quantity, 0);
-  const totalWeight = items.reduce((s, i) => s + (i.unit_weight ? i.quantity * i.unit_weight : (i.weight || 0)), 0);
+  // Group by arrival timing
+  const groups: { label: string; items: QueueDispatch[] }[] = [];
+  const todayItems = filtered.filter(d => d.expected_arrival && isToday(new Date(d.expected_arrival)));
+  const tomorrowItems = filtered.filter(d => d.expected_arrival && isTomorrow(new Date(d.expected_arrival)));
+  const laterItems = filtered.filter(d => {
+    if (!d.expected_arrival) return true;
+    const date = new Date(d.expected_arrival);
+    return !isToday(date) && !isTomorrow(date);
+  });
+
+  if (todayItems.length) groups.push({ label: 'Today', items: todayItems });
+  if (tomorrowItems.length) groups.push({ label: 'Tomorrow', items: tomorrowItems });
+  if (laterItems.length) groups.push({ label: 'Upcoming', items: laterItems });
 
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="container py-4 flex items-center gap-3">
-          <Link to="/">
-            <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1" /> Dashboard</Button>
-          </Link>
-          <div className="h-6 w-px bg-border" />
-          <div>
-            <h1 className="text-lg font-display tracking-tight">Receive Produce</h1>
-            <p className="text-xs text-muted-foreground">Search by DA number, carrier con note, or scan QR</p>
-          </div>
+        <div className="container py-4">
+          <h1 className="text-lg font-display tracking-tight">Receive Produce</h1>
+          <p className="text-xs text-muted-foreground">Tap a delivery to start receiving</p>
         </div>
       </header>
 
-      <div className="container max-w-2xl py-8 space-y-6">
+      <div className="container max-w-2xl py-4 space-y-4">
         {/* Search */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              placeholder="DA-2025-GV001-00134 or carrier con note #"
-              className="pl-12 h-14 text-lg"
-              autoFocus
-            />
-          </div>
-          <Button onClick={handleSearch} disabled={searching} size="lg" className="h-14 px-8 font-display">
-            {searching ? 'Searching...' : 'Search'}
-          </Button>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Filter by grower or ID..."
+            className="pl-10"
+          />
         </div>
 
-        {/* Results */}
-        {searched && !dispatch && !searching && (
-          <div className="p-8 rounded-xl border border-border bg-card text-center space-y-3">
+        {loading ? (
+          <div className="text-center py-12 text-muted-foreground text-sm">Loading queue...</div>
+        ) : filtered.length === 0 ? (
+          <div className="py-12 text-center space-y-2">
             <Package className="h-10 w-10 text-muted-foreground mx-auto" />
-            <h3 className="font-display text-lg">No delivery found for '{searchInput}'</h3>
-            <p className="text-sm text-muted-foreground">Check the DA number on the delivery advice, or the number on the transporter's sheet.</p>
-            <Link to="/" className="text-primary text-sm font-display inline-block mt-2">View all inbound dispatches →</Link>
+            <p className="font-display text-sm text-muted-foreground">
+              {dispatches.length === 0 ? 'No inbound deliveries right now' : 'No deliveries match your search'}
+            </p>
           </div>
-        )}
-
-        {dispatch && (
-          <div className="space-y-6">
-            {/* Status */}
-            <div className="flex items-center justify-between">
-              <StatusBadge status={dispatch.status as any} />
-              <span className="text-xs text-muted-foreground font-display">{dispatch.display_id}</span>
-            </div>
-
-            {/* Summary */}
-            <div className="p-6 rounded-xl border border-border bg-card space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">DA Number</p>
-                  <p className="font-display font-bold text-lg">{dispatch.delivery_advice_number || 'Not generated'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Carrier Con Note</p>
-                  <p className="font-display font-bold text-lg">{dispatch.transporter_con_note_number || 'Awaiting'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">From (Grower)</p>
-                  <p className="font-medium">{dispatch.grower_name}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Carrier</p>
-                  <p className="font-medium">{dispatch.carrier || '-'} {dispatch.truck_number && `· ${dispatch.truck_number}`}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Dispatch Date</p>
-                  <p className="font-medium">{format(new Date(dispatch.dispatch_date), 'dd MMM yyyy')}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Expected Arrival</p>
-                  <p className="font-medium">
-                    {dispatch.expected_arrival ? format(new Date(dispatch.expected_arrival), 'dd MMM yyyy') : '-'}
-                    {dispatch.estimated_arrival_window_start && ` · ${dispatch.estimated_arrival_window_start}`}
-                    {dispatch.estimated_arrival_window_end && ` – ${dispatch.estimated_arrival_window_end}`}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Pallets</p>
-                  <p className="font-display font-bold">{dispatch.total_pallets}</p>
-                </div>
-                {dispatch.temperature_zone && (
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Temp Zone</p>
-                    <p className="font-medium capitalize">{dispatch.temperature_zone}</p>
+        ) : (
+          groups.map(group => (
+            <div key={group.label} className="space-y-2">
+              <h2 className="text-xs font-display uppercase tracking-widest text-muted-foreground px-1">
+                {group.label} · {group.items.length} deliver{group.items.length !== 1 ? 'ies' : 'y'}
+              </h2>
+              {group.items.map(d => (
+                <button
+                  key={d.id}
+                  onClick={() => navigate(`/receive/${d.id}`)}
+                  className="w-full text-left p-4 rounded-lg border border-border bg-card hover:border-primary/30 transition-colors active:bg-muted/50"
+                  style={{ minHeight: 56 }}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <StatusBadge status={getDisplayStatus(d)} />
+                        <span className="text-xs font-mono text-muted-foreground">{d.display_id}</span>
+                      </div>
+                      <p className="font-medium text-sm truncate">{d.grower_name}</p>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <span className="tabular-nums">{d.total_pallets} plt</span>
+                        {d.carrier && (
+                          <span className="flex items-center gap-1">
+                            <Truck className="h-3 w-3 shrink-0" />{d.carrier}
+                          </span>
+                        )}
+                        {d.temperature_zone && (
+                          <span className="capitalize">{d.temperature_zone}</span>
+                        )}
+                        {arrivalLabel(d) && (
+                          <span className="font-medium text-foreground">ETA {arrivalLabel(d)}</span>
+                        )}
+                      </div>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
                   </div>
-                )}
-              </div>
-
-              {/* Con note photo */}
-              {dispatch.transporter_con_note_photo_url && (
-                <div>
-                   <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Transporter's Sheet Photo</p>
-                  <a href={dispatch.transporter_con_note_photo_url} target="_blank" rel="noopener noreferrer">
-                    <img src={dispatch.transporter_con_note_photo_url} alt="Transporter's sheet" className="rounded-lg max-h-32 border border-border" />
-                  </a>
-                </div>
-              )}
+                </button>
+              ))}
             </div>
-
-            {/* Line items */}
-            <div className="rounded-lg border border-border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-muted/50">
-                    <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Product</th>
-                    <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Variety</th>
-                    <th className="text-right p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Qty</th>
-                    <th className="text-right p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Total Kg</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map(item => {
-                    const wt = item.unit_weight ? item.quantity * item.unit_weight : (item.weight || 0);
-                    return (
-                      <tr key={item.id} className="border-t border-border">
-                        <td className="p-3 font-medium">{item.product}</td>
-                        <td className="p-3 text-muted-foreground">{item.variety || '-'}</td>
-                        <td className="p-3 text-right font-display">{item.quantity}</td>
-                        <td className="p-3 text-right text-muted-foreground">{wt ? `${wt.toLocaleString()}kg` : '-'}</td>
-                      </tr>
-                    );
-                  })}
-                  {items.length > 0 && (
-                    <tr className="border-t border-border bg-muted/30">
-                      <td colSpan={2} className="p-3 font-display text-xs uppercase text-muted-foreground">Total</td>
-                      <td className="p-3 text-right font-display font-bold">{totalQty}</td>
-                      <td className="p-3 text-right font-display text-muted-foreground">{totalWeight ? `${totalWeight.toLocaleString()}kg` : '-'}</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Timeline */}
-            <DispatchTimeline dispatchId={dispatch.id} />
-
-            {/* Actions */}
-            <div className="flex gap-3">
-              {dispatch.status === 'in-transit' && (
-                <Button onClick={handleMarkArrived} size="lg" className="flex-1 font-display tracking-wide text-base py-6 bg-success hover:bg-success/90">
-                  <Package className="h-5 w-5 mr-2" /> Mark as Arrived
-                </Button>
-              )}
-              {dispatch.status === 'arrived' && (
-                <Button onClick={() => navigate(`/receive/${dispatch.id}`)} size="lg" className="flex-1 font-display tracking-wide text-base py-6">
-                  <CheckCircle2 className="h-5 w-5 mr-2" /> Begin Receiving
-                </Button>
-              )}
-              <Button onClick={() => navigate(`/receive/${dispatch.id}`)} variant="outline" size="lg" className="font-display">
-                <AlertTriangle className="h-4 w-4 mr-2" /> Flag an Issue
-              </Button>
-            </div>
-          </div>
+          ))
         )}
       </div>
     </div>
