@@ -47,7 +47,7 @@ export default function SupplierHome() {
   if (isLoading) return <BrandedLoading />;
 
   return (
-    <div className="container py-6 sm:py-8 space-y-6 sm:space-y-8 max-w-4xl">
+    <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
       {/* Greeting */}
       <div>
         <h2 className="text-2xl font-display tracking-tight">{getGreeting()}, {firstName}</h2>

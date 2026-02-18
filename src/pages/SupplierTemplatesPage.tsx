@@ -86,7 +86,7 @@ export default function SupplierTemplatesPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="container py-4 flex items-center justify-between">
+        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link to="/">
               <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1" /> Dashboard</Button>
@@ -105,7 +105,7 @@ export default function SupplierTemplatesPage() {
         </div>
       </header>
 
-      <div className="container py-6 max-w-3xl">
+      <div className="max-w-3xl mx-auto px-4 py-6">
         {loading ? (
           <div className="text-center py-12 text-muted-foreground">Loading templates...</div>
         ) : templates.length === 0 ? (

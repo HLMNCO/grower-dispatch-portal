@@ -206,12 +206,12 @@ export default function PublicSubmitPage() {
     return (
       <div className="min-h-screen bg-background">
         <header className="bg-primary text-primary-foreground py-4">
-          <div className="container flex items-center gap-3">
+          <div className="max-w-2xl mx-auto px-4 flex items-center gap-3">
             <Package className="h-6 w-6" />
             <span className="font-display text-lg tracking-tight">FRESHDOCK</span>
           </div>
         </header>
-        <div className="container py-16 text-center max-w-md mx-auto">
+        <div className="max-w-md mx-auto px-4 py-16 text-center">
           <h1 className="text-2xl font-display mb-3">This link isn't valid</h1>
           <p className="text-muted-foreground mb-6">Contact Ten Farms to get a new submission link.</p>
           <div className="text-sm text-muted-foreground space-y-1">
@@ -226,12 +226,12 @@ export default function PublicSubmitPage() {
     return (
       <div className="min-h-screen bg-background">
         <header className="bg-primary text-primary-foreground py-4">
-          <div className="container flex items-center gap-3">
+          <div className="max-w-2xl mx-auto px-4 flex items-center gap-3">
             <Package className="h-6 w-6" />
             <span className="font-display text-lg tracking-tight">FRESHDOCK</span>
           </div>
         </header>
-        <div className="container py-16 text-center max-w-md mx-auto">
+        <div className="max-w-md mx-auto px-4 py-16 text-center">
           <div className="bg-primary/10 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 className="h-10 w-10 text-primary" />
           </div>
@@ -277,13 +277,13 @@ export default function PublicSubmitPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-primary text-primary-foreground py-4">
-        <div className="container flex items-center gap-3">
+        <div className="max-w-2xl mx-auto px-4 flex items-center gap-3">
           <Package className="h-6 w-6" />
           <span className="font-display text-lg tracking-tight">FRESHDOCK</span>
         </div>
       </header>
 
-      <div className="container py-6 max-w-2xl mx-auto px-4">
+      <div className="max-w-2xl mx-auto px-4 py-6">
         <ProgressDots />
 
         {/* STEP 1 — What are you sending? */}

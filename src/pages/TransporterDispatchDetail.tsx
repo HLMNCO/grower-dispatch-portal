@@ -149,7 +149,7 @@ export default function TransporterDispatchDetail() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="container py-4 flex items-center gap-3">
+        <div className="max-w-xl mx-auto px-4 py-4 flex items-center gap-3">
           <Link to="/transporter">
             <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1" /> Run Sheet</Button>
           </Link>
@@ -162,7 +162,7 @@ export default function TransporterDispatchDetail() {
         </div>
       </header>
 
-      <div className="container max-w-xl py-6 space-y-6">
+      <div className="max-w-xl mx-auto px-4 py-6 space-y-6">
         {/* Status bar */}
         <div className="w-full py-4 px-6 rounded-xl text-center">
           <StatusBadge status={dispatch.status} />

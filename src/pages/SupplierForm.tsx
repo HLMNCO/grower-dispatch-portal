@@ -256,7 +256,7 @@ export default function SupplierDispatchForm() {
   ];
 
   return (
-    <div className="container max-w-3xl py-6 sm:py-8">
+    <div className="max-w-3xl mx-auto px-4 py-6 sm:py-8">
       <div className="mb-6">
         <h1 className="text-2xl font-display tracking-tight">New Delivery Advice</h1>
         <p className="text-muted-foreground text-sm mt-1">Submit your dispatch details so we can plan receiving and get your produce to market faster.</p>

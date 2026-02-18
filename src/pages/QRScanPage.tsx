@@ -167,7 +167,7 @@ export default function QRScanPage() {
         <div className="bg-primary py-4 px-6">
           <h1 className="text-primary-foreground font-display text-lg tracking-tight">FRESHDOCK</h1>
         </div>
-        <div className="container py-12 text-center">
+        <div className="max-w-2xl mx-auto px-4 py-12 text-center">
           <QrCode className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h2 className="text-xl font-display mb-2">Delivery Advice Not Found</h2>
           <p className="text-muted-foreground">This QR code doesn't match any delivery advice.</p>
@@ -188,7 +188,7 @@ export default function QRScanPage() {
         <h1 className="text-primary-foreground font-display text-lg tracking-tight">FRESHDOCK</h1>
       </div>
 
-      <div className="container max-w-lg py-6 space-y-6">
+      <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
         {/* Status badge — large, full width */}
         <div className={`w-full py-4 px-6 rounded-xl text-center text-lg font-display font-bold uppercase tracking-widest ${statusStyles[dispatch.status] || 'bg-muted text-muted-foreground'}`}>
           {statusLabels[dispatch.status] || dispatch.status.toUpperCase()}
