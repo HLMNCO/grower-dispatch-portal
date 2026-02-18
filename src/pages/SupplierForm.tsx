@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
-import { CalendarIcon, Plus, Trash2, Send, Truck, Package, Save, FileText } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Send, Package, Save, Thermometer, Snowflake, IceCreamCone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,12 +16,6 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { PhotoUpload } from '@/components/PhotoUpload';
-
-const TEMPERATURE_ZONES = [
-  { value: 'ambient', label: 'Ambient' },
-  { value: 'chilled', label: 'Chilled' },
-  { value: 'frozen', label: 'Frozen' },
-];
 
 const COMMODITY_CLASSES = [
   { value: 'stone_fruit', label: 'Stone Fruit' },
@@ -53,12 +47,17 @@ export default function SupplierDispatchForm() {
   const [growerCode, setGrowerCode] = useState('');
   const [carrier, setCarrier] = useState('');
   const [truckNumber, setTruckNumber] = useState('');
-  const [dispatchDate, setDispatchDate] = useState<Date>();
-  const [expectedArrival, setExpectedArrival] = useState<Date>();
+  const [conNoteNumber, setConNoteNumber] = useState('');
+  const [dispatchDate, setDispatchDate] = useState<Date>(new Date());
+  const [expectedArrival, setExpectedArrival] = useState<Date>(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow;
+  });
   const [arrivalWindowStart, setArrivalWindowStart] = useState('');
   const [arrivalWindowEnd, setArrivalWindowEnd] = useState('');
   const [totalPallets, setTotalPallets] = useState('');
-  const [temperatureZone, setTemperatureZone] = useState('');
+  const [temperatureZone, setTemperatureZone] = useState('ambient');
   const [commodityClass, setCommodityClass] = useState('');
   const [items, setItems] = useState<DispatchItem[]>([{ ...emptyItem }]);
   const [notes, setNotes] = useState('');
@@ -81,7 +80,6 @@ export default function SupplierDispatchForm() {
     }
   }, [business]);
 
-  // Pre-fill from template if query param
   useEffect(() => {
     const templateId = searchParams.get('template');
     if (templateId && templates.length > 0) {
@@ -129,7 +127,6 @@ export default function SupplierDispatchForm() {
     if (d.arrivalWindowEnd) setArrivalWindowEnd(d.arrivalWindowEnd);
     if (d.items && d.items.length > 0) setItems(d.items);
     if (d.notes) setNotes(d.notes);
-    // Update last_used_at
     supabase.from('dispatch_templates').update({ last_used_at: new Date().toISOString() }).eq('id', tmpl.id).then();
     toast({ title: 'Template loaded', description: `"${tmpl.template_name}" applied. Update dates and quantities as needed.` });
   };
@@ -138,15 +135,8 @@ export default function SupplierDispatchForm() {
     if (!business || !templateName.trim()) return;
     setSavingTemplate(true);
     const templateData = {
-      selectedReceiver,
-      carrier,
-      temperatureZone,
-      commodityClass,
-      totalPallets,
-      arrivalWindowStart,
-      arrivalWindowEnd,
-      items,
-      notes,
+      selectedReceiver, carrier, temperatureZone, commodityClass,
+      totalPallets, arrivalWindowStart, arrivalWindowEnd, items, notes,
     };
     const { error } = await supabase.from('dispatch_templates').insert([{
       business_id: business.id,
@@ -194,7 +184,7 @@ export default function SupplierDispatchForm() {
         expected_arrival: expectedArrival ? format(expectedArrival, 'yyyy-MM-dd') : null,
         estimated_arrival_window_start: arrivalWindowStart || null,
         estimated_arrival_window_end: arrivalWindowEnd || null,
-        transporter_con_note_number: '',
+        transporter_con_note_number: conNoteNumber || '',
         carrier: carrier || null,
         truck_number: truckNumber || null,
         total_pallets: parseInt(totalPallets) || 0,
@@ -212,7 +202,6 @@ export default function SupplierDispatchForm() {
       return;
     }
 
-    // Insert items
     const itemRows = items
       .filter(i => i.product)
       .map(i => ({
@@ -233,7 +222,6 @@ export default function SupplierDispatchForm() {
       }
     }
 
-    // Log created event
     await supabase.from('dispatch_events').insert({
       dispatch_id: dispatch.id,
       event_type: 'created',
@@ -242,7 +230,6 @@ export default function SupplierDispatchForm() {
       metadata: { grower_name: growerName },
     });
 
-    // Log submitted event
     await supabase.from('dispatch_events').insert({
       dispatch_id: dispatch.id,
       event_type: 'submitted',
@@ -259,22 +246,20 @@ export default function SupplierDispatchForm() {
     navigate(`/dispatch/${dispatch.id}`);
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card">
-        <div className="container max-w-3xl py-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 rounded-lg bg-primary">
-              <Truck className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <h1 className="text-2xl font-display tracking-tight">New Delivery Advice</h1>
-            <span className="ml-auto text-xs font-display text-muted-foreground tracking-wider">FRESHDOCK</span>
-          </div>
-          <p className="text-muted-foreground">Submit your dispatch details so we can plan receiving and get your produce to market faster.</p>
-        </div>
-      </header>
+  const tempZones = [
+    { value: 'ambient', icon: Thermometer, label: 'Ambient', desc: 'No refrigeration required' },
+    { value: 'chilled', icon: Snowflake, label: 'Chilled', desc: '2°C – 8°C' },
+    { value: 'frozen', icon: IceCreamCone, label: 'Frozen', desc: 'Below 0°C' },
+  ];
 
-      <form onSubmit={handleSubmit} className="container max-w-3xl py-8 space-y-8">
+  return (
+    <div className="container max-w-3xl py-6 sm:py-8">
+      <div className="mb-6">
+        <h1 className="text-2xl font-display tracking-tight">New Delivery Advice</h1>
+        <p className="text-muted-foreground text-sm mt-1">Submit your dispatch details so we can plan receiving and get your produce to market faster.</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-8">
         {/* Template selector */}
         {templates.length > 0 && (
           <section className="space-y-2">
@@ -304,13 +289,12 @@ export default function SupplierDispatchForm() {
           {receivers.length === 0 ? (
             <div className="p-4 border border-dashed border-border rounded-lg text-center">
               <p className="text-sm text-muted-foreground">No connected receivers yet.</p>
-              <p className="text-xs text-muted-foreground mt-1">Go to Connections to find and connect with a receiver first.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {receivers.map(r => (
                 <button key={r.id} type="button" onClick={() => setSelectedReceiver(r.id)}
-                  className={`p-3 rounded-lg border text-left text-sm transition-all ${
+                  className={`p-3 rounded-lg border text-left text-sm transition-all min-h-[44px] ${
                     selectedReceiver === r.id ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/30'
                   }`}>
                   <div className="font-medium">{r.name}</div>
@@ -335,76 +319,7 @@ export default function SupplierDispatchForm() {
           </div>
         </section>
 
-        {/* Consignment Details */}
-        <section className="space-y-4">
-          <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">Delivery Details</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="carrier">Carrier / Transport</Label>
-              <Input id="carrier" value={carrier} onChange={e => setCarrier(e.target.value)} placeholder="e.g. Cool Chain Logistics" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="truckNumber">Truck / Rego Number</Label>
-              <Input id="truckNumber" value={truckNumber} onChange={e => setTruckNumber(e.target.value)} placeholder="e.g. ABC-123" />
-            </div>
-            <div className="space-y-2">
-              <Label>Dispatch Date *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !dispatchDate && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dispatchDate ? format(dispatchDate, 'PPP') : 'Select date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={dispatchDate} onSelect={setDispatchDate} className="pointer-events-auto" />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-2">
-              <Label>Expected Arrival</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !expectedArrival && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {expectedArrival ? format(expectedArrival, 'PPP') : 'Select date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={expectedArrival} onSelect={setExpectedArrival} className="pointer-events-auto" />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-2">
-              <Label>Arrival Window Start</Label>
-              <Input type="time" value={arrivalWindowStart} onChange={e => setArrivalWindowStart(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Arrival Window End</Label>
-              <Input type="time" value={arrivalWindowEnd} onChange={e => setArrivalWindowEnd(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pallets">Total Pallets</Label>
-              <Input id="pallets" type="number" min={0} value={totalPallets} onChange={e => setTotalPallets(e.target.value)} placeholder="0" />
-            </div>
-            <div className="space-y-2">
-              <Label>Temperature Zone</Label>
-              <Select value={temperatureZone} onValueChange={setTemperatureZone}>
-                <SelectTrigger><SelectValue placeholder="Select zone" /></SelectTrigger>
-                <SelectContent>{TEMPERATURE_ZONES.map(z => <SelectItem key={z.value} value={z.value}>{z.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Commodity Class</Label>
-              <Select value={commodityClass} onValueChange={setCommodityClass}>
-                <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
-                <SelectContent>{COMMODITY_CLASSES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-          </div>
-        </section>
-
-        {/* Line Items */}
+        {/* Product Breakdown */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">Product Breakdown</h2>
@@ -415,7 +330,7 @@ export default function SupplierDispatchForm() {
           
           <div className="space-y-3">
             {items.map((item, i) => (
-              <div key={i} className="p-4 rounded-lg bg-card border border-border space-y-3 animate-slide-in">
+              <div key={i} className="p-4 rounded-lg bg-card border border-border space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-display uppercase tracking-widest text-muted-foreground">Item {i + 1}</span>
                   {items.length > 1 && (
@@ -458,9 +373,114 @@ export default function SupplierDispatchForm() {
             ))}
           </div>
 
-          <Button type="button" variant="outline" onClick={addItem} className="w-full border-dashed">
+          <Button type="button" variant="outline" onClick={addItem} className="w-full border-dashed min-h-[44px]">
             <Plus className="h-4 w-4 mr-2" /> Add Product Line
           </Button>
+        </section>
+
+        {/* Carrier & Delivery Details */}
+        <section className="space-y-4 rounded-lg border border-border bg-card p-5">
+          <div>
+            <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">Carrier & Delivery Details</h2>
+            <p className="text-xs text-muted-foreground mt-1">Tell us who's bringing the produce and when to expect it. You'll find this on your freight booking or pink sheet.</p>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="carrier">Carrier / Transport Company <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input id="carrier" value={carrier} onChange={e => setCarrier(e.target.value)} placeholder="e.g. Toll, Linfox, local carrier name" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="truckNumber">Truck Registration <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input id="truckNumber" value={truckNumber} onChange={e => setTruckNumber(e.target.value)} placeholder="e.g. ABC123" />
+              <p className="text-xs text-muted-foreground">If you know it at time of dispatch</p>
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="conNote">Carrier's Con Note Number <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input id="conNote" value={conNoteNumber} onChange={e => setConNoteNumber(e.target.value)} placeholder="Number from the pink sheet / freight con note" />
+              <p className="text-xs text-muted-foreground">The carrier's freight document number — not the same as your Delivery Advice number</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Leaving your farm on *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal min-h-[44px]", !dispatchDate && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dispatchDate ? format(dispatchDate, 'PPP') : 'Select date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dispatchDate} onSelect={(d) => d && setDispatchDate(d)} className="pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label>Expected to arrive at Ten Farms *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal min-h-[44px]", !expectedArrival && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {expectedArrival ? format(expectedArrival, 'PPP') : 'Select date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={expectedArrival} onSelect={(d) => d && setExpectedArrival(d)} className="pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Expected arrival window <span className="text-muted-foreground text-xs">(optional)</span></Label>
+            <div className="grid grid-cols-2 gap-3">
+              <Input type="time" value={arrivalWindowStart} onChange={e => setArrivalWindowStart(e.target.value)} placeholder="4:00 AM" />
+              <Input type="time" value={arrivalWindowEnd} onChange={e => setArrivalWindowEnd(e.target.value)} placeholder="8:00 AM" />
+            </div>
+            <p className="text-xs text-muted-foreground">Approximate window helps us plan dock space</p>
+          </div>
+
+          {/* Temperature Zone radio cards */}
+          <div className="space-y-2">
+            <Label>Temperature Zone *</Label>
+            <div className="grid grid-cols-3 gap-3">
+              {tempZones.map(tz => {
+                const Icon = tz.icon;
+                const selected = temperatureZone === tz.value;
+                return (
+                  <button
+                    key={tz.value}
+                    type="button"
+                    onClick={() => setTemperatureZone(tz.value)}
+                    className={cn(
+                      "p-4 rounded-lg border text-center transition-all min-h-[44px]",
+                      selected ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/30'
+                    )}
+                  >
+                    <Icon className={cn("h-6 w-6 mx-auto mb-1.5", selected ? 'text-primary' : 'text-muted-foreground')} />
+                    <p className="font-display text-sm font-bold">{tz.label}</p>
+                    <p className="text-xs text-muted-foreground">{tz.desc}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="pallets">Total Pallets</Label>
+              <Input id="pallets" type="number" min={0} value={totalPallets} onChange={e => setTotalPallets(e.target.value)} placeholder="0" />
+            </div>
+            <div className="space-y-2">
+              <Label>Commodity Class</Label>
+              <Select value={commodityClass} onValueChange={setCommodityClass}>
+                <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                <SelectContent>{COMMODITY_CLASSES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
         </section>
 
         {/* Photos */}
@@ -476,11 +496,11 @@ export default function SupplierDispatchForm() {
           <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Special handling instructions, ripeness notes, etc." rows={3} />
         </section>
 
-        <Button type="submit" size="lg" className="w-full font-display tracking-wide" disabled={submitting}>
+        <Button type="submit" size="lg" className="w-full font-display tracking-wide min-h-[56px]" disabled={submitting}>
           <Send className="h-4 w-4 mr-2" /> {submitting ? 'Submitting...' : 'Submit Delivery Advice'}
         </Button>
 
-        <Button type="button" variant="secondary" size="lg" className="w-full font-display tracking-wide" onClick={() => setShowSaveTemplate(true)}>
+        <Button type="button" variant="secondary" size="lg" className="w-full font-display tracking-wide min-h-[44px]" onClick={() => setShowSaveTemplate(true)}>
           <Save className="h-4 w-4 mr-2" /> Save as Template
         </Button>
       </form>
