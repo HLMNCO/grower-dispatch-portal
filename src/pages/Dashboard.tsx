@@ -36,7 +36,7 @@ interface DispatchRow {
 
 const statCards = [
   { label: 'Inbound', icon: Truck, filterStatus: 'pending' },
-  { label: 'Arrived, Awaiting Entry', icon: FileText, filterStatus: 'received-pending-admin' },
+  { label: 'Awaiting Entry', icon: FileText, filterStatus: 'received-pending-admin' },
   { label: 'Received with Issues', icon: AlertTriangle, filterStatus: 'issue' },
   { label: 'Completed', icon: CheckCircle2, filterStatus: 'received' },
 ];
