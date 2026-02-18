@@ -35,10 +35,9 @@ interface DispatchRow {
 }
 
 const statCards = [
-  { label: 'Pending', icon: Clock, filterStatus: 'pending' },
-  { label: 'In Transit', icon: Truck, filterStatus: 'in-transit' },
-  { label: 'Issues', icon: AlertTriangle, filterStatus: 'issue' },
-  { label: 'Pending Admin', icon: FileText, filterStatus: 'received-pending-admin' },
+  { label: 'Inbound', icon: Truck, filterStatus: 'pending' },
+  { label: 'Arrived, Awaiting Entry', icon: FileText, filterStatus: 'received-pending-admin' },
+  { label: 'Received with Issues', icon: AlertTriangle, filterStatus: 'issue' },
   { label: 'Completed', icon: CheckCircle2, filterStatus: 'received' },
 ];
 
@@ -292,7 +291,7 @@ export default function Dashboard() {
             {isReceiver && <TomorrowSummary dispatches={dispatches} />}
 
             {/* Stat Cards — 3+2 layout on mobile, 5 on desktop */}
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
               {statCards.map(card => {
                 const count = counts[card.filterStatus] || 0;
                 const isActive = statusFilter === card.filterStatus;
