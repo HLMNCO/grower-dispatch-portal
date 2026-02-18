@@ -58,32 +58,32 @@ function TomorrowSummary({ dispatches }: { dispatches: DispatchRow[] }) {
   const totalPallets = tomorrowArrivals.reduce((sum, d) => sum + d.total_pallets, 0);
 
   return (
-    <Alert className="border-primary/30 bg-primary/5">
-      <Bell className="h-4 w-4 text-primary" />
-      <AlertTitle className="font-display tracking-tight">
-        Tomorrow's Arrivals — {format(tomorrow, 'EEEE, d MMM')}
-      </AlertTitle>
-      <AlertDescription className="mt-2 space-y-1">
-        <p className="text-sm font-medium">
-          {tomorrowArrivals.length} dispatch{tomorrowArrivals.length !== 1 ? 'es' : ''} · {totalPallets} pallet{totalPallets !== 1 ? 's' : ''} expected
-        </p>
-        <div className="mt-2 space-y-1">
-          {tomorrowArrivals.map(d => (
-            <div key={d.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 text-sm">
-              <span className="font-medium text-foreground truncate">{d.grower_name}</span>
-              <span className="text-muted-foreground whitespace-nowrap tabular-nums">{d.total_pallets} plt</span>
-              {d.carrier ? (
-                <span className="flex items-center gap-1.5 text-muted-foreground whitespace-nowrap">
-                  <Truck className="h-3.5 w-3.5 shrink-0" />{d.carrier}
-                </span>
-              ) : (
-                <span />
-              )}
-            </div>
-          ))}
+    <div className="rounded-lg border border-primary/30 bg-primary/5 overflow-hidden">
+      <div className="px-4 py-3 flex items-center gap-2 border-b border-primary/20">
+        <Bell className="h-4 w-4 text-primary shrink-0" />
+        <div className="flex-1 min-w-0">
+          <h3 className="font-display tracking-tight text-sm">Tomorrow's Arrivals — {format(tomorrow, 'EEEE, d MMM')}</h3>
+          <p className="text-xs text-muted-foreground">
+            {tomorrowArrivals.length} dispatch{tomorrowArrivals.length !== 1 ? 'es' : ''} · {totalPallets} pallet{totalPallets !== 1 ? 's' : ''} expected
+          </p>
         </div>
-      </AlertDescription>
-    </Alert>
+      </div>
+      <div className="divide-y divide-border">
+        {tomorrowArrivals.map(d => (
+          <div key={d.id} className="grid grid-cols-[1fr_60px_100px] sm:grid-cols-[1fr_80px_140px] items-center px-4 py-2.5 text-sm">
+            <span className="font-medium text-foreground truncate pr-2">{d.grower_name}</span>
+            <span className="text-muted-foreground tabular-nums text-right">{d.total_pallets} plt</span>
+            <span className="flex items-center justify-end gap-1.5 text-muted-foreground text-xs truncate">
+              {d.carrier ? (
+                <><Truck className="h-3 w-3 shrink-0" /><span className="truncate">{d.carrier}</span></>
+              ) : (
+                <span className="text-muted-foreground/50">—</span>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
