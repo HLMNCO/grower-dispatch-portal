@@ -10,9 +10,10 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   intakeToken: string;
+  compact?: boolean;
 }
 
-export default function SupplierIntakeLinkDialog({ intakeToken }: Props) {
+export default function SupplierIntakeLinkDialog({ intakeToken, compact }: Props) {
   const [open, setOpen] = useState(false);
   const [growerName, setGrowerName] = useState('');
   const [growerCode, setGrowerCode] = useState('');
