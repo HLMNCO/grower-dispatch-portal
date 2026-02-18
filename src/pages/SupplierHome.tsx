@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { BrandedLoading } from '@/components/BrandedLoading';
+import { SupplierHomeSkeleton } from '@/components/Skeletons';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -44,7 +45,7 @@ export default function SupplierHome() {
   const awaitingCount = dispatches.filter(d => d.status === 'pending').length;
   const issueCount = dispatches.filter(d => d.status === 'issue').length;
 
-  if (isLoading) return <BrandedLoading />;
+  if (isLoading) return <SupplierHomeSkeleton />;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
