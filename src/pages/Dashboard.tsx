@@ -103,6 +103,11 @@ function DispatchCard({ dispatch, onClick }: { dispatch: DispatchRow; onClick: (
               <span>ETA {format(new Date(dispatch.expected_arrival), 'dd MMM')}</span>
             )}
             <span>{dispatch.total_pallets} plt</span>
+            {!dispatch.internal_lot_number && ['received-pending-admin', 'arrived', 'received'].includes(dispatch.status) && (
+              <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />No lot #
+              </span>
+            )}
           </div>
         </div>
         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
@@ -355,7 +360,13 @@ export default function Dashboard() {
                               <div className="font-medium">{dispatch.grower_name}</div>
                               <div className="text-xs text-muted-foreground">{dispatch.grower_code || '-'}</div>
                             </td>
-                            <td className="p-3 font-display text-xs">{dispatch.internal_lot_number || <span className="text-muted-foreground/50">—</span>}</td>
+                            <td className="p-3 font-display text-xs">
+                              {dispatch.internal_lot_number || (
+                                ['received-pending-admin', 'arrived', 'received'].includes(dispatch.status) 
+                                  ? <span className="inline-flex items-center gap-1 text-amber-600"><span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />No lot #</span>
+                                  : <span className="text-muted-foreground/50">—</span>
+                              )}
+                            </td>
                             <td className="p-3 text-muted-foreground">{format(new Date(dispatch.dispatch_date), 'dd MMM')}</td>
                             <td className="p-3 text-muted-foreground">{dispatch.expected_arrival ? format(new Date(dispatch.expected_arrival), 'dd MMM') : '-'}</td>
                             <td className="p-3">{dispatch.total_pallets}</td>
