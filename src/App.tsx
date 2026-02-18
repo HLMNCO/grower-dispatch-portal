@@ -29,9 +29,27 @@ import { AppLayout } from "./components/AppLayout";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  if (loading) return <BrandedLoading />;
+  const { user, loading, roleLoaded } = useAuth();
+  if (loading || !roleLoaded) return <BrandedLoading />;
   if (!user) return <Navigate to="/auth" replace />;
+  return <>{children}</>;
+}
+
+/** Only accessible by staff/receiver role */
+function ReceiverRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading, roleLoaded, role } = useAuth();
+  if (loading || !roleLoaded) return <BrandedLoading />;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (role === 'supplier') return <Navigate to="/dispatch" replace />;
+  return <>{children}</>;
+}
+
+/** Only accessible by supplier role */
+function SupplierRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading, roleLoaded, role } = useAuth();
+  if (loading || !roleLoaded) return <BrandedLoading />;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (role === 'staff') return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -93,15 +111,15 @@ const AppRoutes = () => (
       <Route path="/s/:code" element={<ShortLinkRedirect />} />
       {/* Protected routes with layout */}
       <Route path="/" element={<ProtectedRoute><AppLayout><RoleBasedHome /></AppLayout></ProtectedRoute>} />
-      <Route path="/dispatch" element={<ProtectedRoute><AppLayout><SupplierHome /></AppLayout></ProtectedRoute>} />
-      <Route path="/dispatch/new" element={<ProtectedRoute><AppLayout><SupplierForm /></AppLayout></ProtectedRoute>} />
-      <Route path="/dispatch/:id" element={<ProtectedRoute><AppLayout><SupplierDispatchDetail /></AppLayout></ProtectedRoute>} />
-      <Route path="/supplier/templates" element={<ProtectedRoute><AppLayout><SupplierTemplatesPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/receive/:id" element={<ProtectedRoute><AppLayout><ReceiveDispatch /></AppLayout></ProtectedRoute>} />
-      <Route path="/planning" element={<ProtectedRoute><AppLayout><InboundPlanning /></AppLayout></ProtectedRoute>} />
-      <Route path="/receiver/verify" element={<ProtectedRoute><AppLayout><ReceiverVerifyPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/growers" element={<ProtectedRoute><AppLayout><GrowersPage /></AppLayout></ProtectedRoute>} />
-      <Route path="/staff" element={<ProtectedRoute><AppLayout><StaffManagementPage /></AppLayout></ProtectedRoute>} />
+      <Route path="/dispatch" element={<SupplierRoute><AppLayout><SupplierHome /></AppLayout></SupplierRoute>} />
+      <Route path="/dispatch/new" element={<SupplierRoute><AppLayout><SupplierForm /></AppLayout></SupplierRoute>} />
+      <Route path="/dispatch/:id" element={<SupplierRoute><AppLayout><SupplierDispatchDetail /></AppLayout></SupplierRoute>} />
+      <Route path="/supplier/templates" element={<SupplierRoute><AppLayout><SupplierTemplatesPage /></AppLayout></SupplierRoute>} />
+      <Route path="/receive/:id" element={<ReceiverRoute><AppLayout><ReceiveDispatch /></AppLayout></ReceiverRoute>} />
+      <Route path="/planning" element={<ReceiverRoute><AppLayout><InboundPlanning /></AppLayout></ReceiverRoute>} />
+      <Route path="/receiver/verify" element={<ReceiverRoute><AppLayout><ReceiverVerifyPage /></AppLayout></ReceiverRoute>} />
+      <Route path="/growers" element={<ReceiverRoute><AppLayout><GrowersPage /></AppLayout></ReceiverRoute>} />
+      <Route path="/staff" element={<ReceiverRoute><AppLayout><StaffManagementPage /></AppLayout></ReceiverRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </BrowserRouter>
