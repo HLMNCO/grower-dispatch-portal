@@ -37,11 +37,16 @@ interface DispatchRow {
 const statCards = [
   { label: 'Pending', icon: Clock, filterStatus: 'pending' },
   { label: 'In Transit', icon: Truck, filterStatus: 'in-transit' },
-  { label: 'Arrived', icon: Package, filterStatus: 'arrived' },
   { label: 'Issues', icon: AlertTriangle, filterStatus: 'issue' },
   { label: 'Pending Admin', icon: FileText, filterStatus: 'received-pending-admin' },
-  { label: 'Received', icon: CheckCircle2, filterStatus: 'received' },
+  { label: 'Completed', icon: CheckCircle2, filterStatus: 'received' },
 ];
+
+/** Derive display status: arrived without lot # → received-pending-admin */
+function getDisplayStatus(d: DispatchRow) {
+  if (d.status === 'arrived' && !d.internal_lot_number) return 'received-pending-admin';
+  return d.status;
+}
 
 function TomorrowSummary({ dispatches }: { dispatches: DispatchRow[] }) {
   const tomorrow = addDays(new Date(), 1);
@@ -94,7 +99,7 @@ function DispatchCard({ dispatch, onClick }: { dispatch: DispatchRow; onClick: (
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-mono text-muted-foreground">{dispatch.display_id}</span>
-            <StatusBadge status={dispatch.status as any} />
+            <StatusBadge status={getDisplayStatus(dispatch)} />
           </div>
           <p className="font-medium text-sm truncate">{dispatch.grower_name}</p>
           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
@@ -148,6 +153,7 @@ export default function Dashboard() {
     setLoading(false);
   };
 
+
   const filtered = dispatches.filter(d => {
     const matchesSearch = !search ||
       d.grower_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -155,12 +161,14 @@ export default function Dashboard() {
       (d.delivery_advice_number || '').toLowerCase().includes(search.toLowerCase()) ||
       (d.internal_lot_number || '').toLowerCase().includes(search.toLowerCase()) ||
       d.display_id.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || d.status === statusFilter;
+    const displayStatus = getDisplayStatus(d);
+    const matchesStatus = statusFilter === 'all' || displayStatus === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const counts = dispatches.reduce((acc, d) => {
-    acc[d.status] = (acc[d.status] || 0) + 1;
+    const ds = getDisplayStatus(d);
+    acc[ds] = (acc[ds] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
@@ -284,7 +292,7 @@ export default function Dashboard() {
             {isReceiver && <TomorrowSummary dispatches={dispatches} />}
 
             {/* Stat Cards — 3+2 layout on mobile, 5 on desktop */}
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3">
               {statCards.map(card => {
                 const count = counts[card.filterStatus] || 0;
                 const isActive = statusFilter === card.filterStatus;
@@ -370,7 +378,7 @@ export default function Dashboard() {
                             <td className="p-3 text-muted-foreground">{format(new Date(dispatch.dispatch_date), 'dd MMM')}</td>
                             <td className="p-3 text-muted-foreground">{dispatch.expected_arrival ? format(new Date(dispatch.expected_arrival), 'dd MMM') : '-'}</td>
                             <td className="p-3">{dispatch.total_pallets}</td>
-                            <td className="p-3"><StatusBadge status={dispatch.status as any} /></td>
+                            <td className="p-3"><StatusBadge status={getDisplayStatus(dispatch)} /></td>
                             <td className="p-3"><ArrowRight className="h-4 w-4 text-muted-foreground" /></td>
                           </tr>
                         ))}
