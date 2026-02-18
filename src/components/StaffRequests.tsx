@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
-import { UserPlus, Check, X } from 'lucide-react';
+import { UserPlus, Check, X, Sprout, Package } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface StaffRequest {
@@ -12,6 +12,7 @@ interface StaffRequest {
   display_name: string;
   email: string;
   status: string;
+  requested_role: string;
   created_at: string;
 }
 
@@ -37,21 +38,35 @@ export default function StaffRequests() {
   const handleApprove = async (request: StaffRequest) => {
     if (!business || !user) return;
 
-    // Update the request status
+    // 1. Assign the role
+    const role = request.requested_role === 'supplier' ? 'supplier' : 'staff';
+    const { error: roleError } = await supabase.from('user_roles').insert({
+      user_id: request.user_id,
+      role: role,
+    });
+
+    if (roleError) {
+      toast({ title: 'Failed to assign role', description: roleError.message, variant: 'destructive' });
+      return;
+    }
+
+    // 2. Update the request status
     await supabase.from('staff_requests').update({
       status: 'approved',
       reviewed_by: user.id,
       reviewed_at: new Date().toISOString(),
     }).eq('id', request.id);
 
-    // Link the user's profile to this business
-    await supabase.from('profiles').update({
-      business_id: business.id,
-      company_name: business.name,
-      display_name: request.display_name,
-    }).eq('user_id', request.user_id);
+    // 3. For staff, link profile to this business
+    if (role === 'staff') {
+      await supabase.from('profiles').update({
+        business_id: business.id,
+        company_name: business.name,
+        display_name: request.display_name,
+      }).eq('user_id', request.user_id);
+    }
 
-    toast({ title: `${request.display_name} approved` });
+    toast({ title: `${request.display_name} approved as ${role}` });
     setRequests(prev => prev.filter(r => r.id !== request.id));
   };
 
@@ -76,15 +91,26 @@ export default function StaffRequests() {
       <div className="px-4 py-3 flex items-center gap-2 border-b border-amber-200/50">
         <UserPlus className="h-4 w-4 text-amber-600 shrink-0" />
         <h3 className="font-display text-sm tracking-tight">
-          Staff Access Requests · {requests.length}
+          Access Requests · {requests.length}
         </h3>
       </div>
       <div className="divide-y divide-border">
         {requests.map(req => (
           <div key={req.id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <p className="font-medium text-sm truncate">{req.display_name}</p>
-              <p className="text-xs text-muted-foreground truncate">{req.email} · {format(new Date(req.created_at), 'dd MMM')}</p>
+            <div className="min-w-0 flex-1 flex items-center gap-2.5">
+              <div className="shrink-0">
+                {req.requested_role === 'supplier' ? (
+                  <Sprout className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <Package className="h-4 w-4 text-primary" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="font-medium text-sm truncate">{req.display_name}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {req.requested_role === 'supplier' ? 'Grower' : 'Staff'} · {req.email} · {format(new Date(req.created_at), 'dd MMM')}
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <Button size="sm" variant="outline" className="h-8 px-2 text-destructive hover:bg-destructive/10" onClick={() => handleReject(req)}>

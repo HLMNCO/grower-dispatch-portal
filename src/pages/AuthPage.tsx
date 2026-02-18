@@ -102,14 +102,29 @@ export default function AuthPage() {
         }).eq('user_id', authData.user.id);
       }
 
+      // Submit an access request for admin approval
+      const { error: reqError } = await supabase.from('staff_requests').insert({
+        user_id: authData.user.id,
+        display_name: displayName,
+        email: signupEmail,
+        requested_role: 'supplier',
+      });
+
+      if (reqError) {
+        toast({ title: 'Request failed', description: reqError.message, variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+
       setLoading(false);
-      navigate('/');
+      setRequestSent(true);
     } else {
       // Staff: submit an access request, don't create a business
       const { error: reqError } = await supabase.from('staff_requests').insert({
         user_id: authData.user.id,
         display_name: displayName,
         email: signupEmail,
+        requested_role: 'staff',
       });
 
       if (reqError) {

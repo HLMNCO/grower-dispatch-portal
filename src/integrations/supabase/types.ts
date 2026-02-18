@@ -470,6 +470,7 @@ export type Database = {
           display_name: string
           email: string
           id: string
+          requested_role: string
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
@@ -480,6 +481,7 @@ export type Database = {
           display_name?: string
           email?: string
           id?: string
+          requested_role?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
@@ -490,6 +492,7 @@ export type Database = {
           display_name?: string
           email?: string
           id?: string
+          requested_role?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
