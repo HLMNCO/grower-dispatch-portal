@@ -157,7 +157,7 @@ export default function InboundPlanning() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="container py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link to="/">
               <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1" /> Dashboard</Button>
@@ -171,7 +171,7 @@ export default function InboundPlanning() {
         </div>
       </header>
 
-      <div className="container py-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         {/* Week Nav */}
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg tracking-tight">

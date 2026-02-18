@@ -170,7 +170,7 @@ export default function Dashboard() {
       {/* Header — responsive: stacks actions on mobile */}
       {/* Header — hidden on mobile (AppLayout handles it), visible on desktop */}
       <header className="hidden lg:block border-b border-border bg-card sticky top-0 z-10">
-        <div className="container py-4">
+        <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary">
@@ -223,7 +223,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="container py-4 sm:py-6">
+      <div className="max-w-7xl mx-auto px-4 py-4 sm:py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4 sm:mb-6 w-full sm:w-auto">
             <TabsTrigger value="dispatches" className="flex-1 sm:flex-initial">

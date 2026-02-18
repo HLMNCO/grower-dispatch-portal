@@ -110,7 +110,7 @@ export default function StaffManagementPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container py-4 sm:py-6 space-y-4 sm:space-y-6">
+      <div className="max-w-5xl mx-auto px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
         <div>
           <h1 className="text-lg sm:text-xl font-display tracking-tight">Staff</h1>
           <p className="text-xs sm:text-sm text-muted-foreground">{staff.length} team member{staff.length !== 1 ? 's' : ''}</p>
