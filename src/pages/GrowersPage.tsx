@@ -241,8 +241,8 @@ export default function GrowersPage() {
   const smsMsg = `Hi ${firstName}, tap here to send your next delivery to Ten Farms: ${generatedUrl}`;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container py-4 sm:py-6 space-y-4 sm:space-y-6">
+    <div className="min-h-screen bg-background overflow-x-hidden">
+      <div className="max-w-5xl mx-auto px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -341,7 +341,7 @@ export default function GrowersPage() {
                 <div key={grower.id}>
                   <div className="flex items-center justify-between gap-3 px-4 py-3">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <Sprout className="h-4 w-4 text-emerald-500 shrink-0" />
+                      <Sprout className="h-4 w-4 text-primary shrink-0" />
                       <div className="min-w-0">
                         <p className="font-medium text-sm truncate">{grower.name}</p>
                         <p className="text-xs text-muted-foreground truncate">
