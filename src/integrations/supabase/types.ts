@@ -464,6 +464,39 @@ export type Database = {
           },
         ]
       }
+      staff_requests: {
+        Row: {
+          created_at: string
+          display_name: string
+          email: string
+          id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string
+          email?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          email?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       supplier_intake_links: {
         Row: {
           created_at: string

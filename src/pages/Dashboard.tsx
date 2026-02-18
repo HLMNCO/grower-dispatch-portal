@@ -13,6 +13,7 @@ import { toast } from '@/hooks/use-toast';
 import ConnectionsPage from './ConnectionsPage';
 import ReceivingCalendar from '@/components/ReceivingCalendar';
 import SupplierIntakeLinkDialog from '@/components/SupplierIntakeLinkDialog';
+import StaffRequests from '@/components/StaffRequests';
 
 interface DispatchRow {
   id: string;
@@ -237,6 +238,7 @@ export default function Dashboard() {
           <TabsContent value="dispatches" className="space-y-4 sm:space-y-6">
             {/* Tomorrow's Arrivals Summary */}
             {isReceiver && <TomorrowSummary dispatches={dispatches} />}
+            {isReceiver && <StaffRequests />}
 
             {/* Stat Cards — 3+2 layout on mobile, 5 on desktop */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
