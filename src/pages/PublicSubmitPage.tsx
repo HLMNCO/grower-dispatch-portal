@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Package, Plus, Trash2, CheckCircle2, Loader2, Camera, X, ImageIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -24,15 +24,25 @@ const emptyItem = (): LineItem => ({
 
 export default function PublicSubmitPage() {
   const { token } = useParams<{ token: string }>();
+  const [searchParams] = useSearchParams();
   const [receiverName, setReceiverName] = useState<string | null>(null);
   const [loadingBiz, setLoadingBiz] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
+  // Pre-filled grower info from URL params (set up by receiver)
+  const prefilled = {
+    name: searchParams.get('name') || '',
+    code: searchParams.get('code') || '',
+    email: searchParams.get('email') || '',
+    phone: searchParams.get('phone') || '',
+  };
+  const hasPrefill = !!prefilled.name;
+
   // Form state
-  const [growerName, setGrowerName] = useState('');
-  const [growerCode, setGrowerCode] = useState('');
-  const [growerEmail, setGrowerEmail] = useState('');
-  const [growerPhone, setGrowerPhone] = useState('');
+  const [growerName, setGrowerName] = useState(prefilled.name);
+  const [growerCode, setGrowerCode] = useState(prefilled.code);
+  const [growerEmail, setGrowerEmail] = useState(prefilled.email);
+  const [growerPhone, setGrowerPhone] = useState(prefilled.phone);
   const [dispatchDate, setDispatchDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [expectedArrival, setExpectedArrival] = useState('');
   const [carrier, setCarrier] = useState('');
@@ -246,36 +256,45 @@ export default function PublicSubmitPage() {
           {/* Grower Details */}
           <section className="space-y-3">
             <h2 className="text-sm font-display uppercase tracking-widest text-muted-foreground">Your Details</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium mb-1 block">Business Name *</label>
-                <Input value={growerName} onChange={e => setGrowerName(e.target.value)} placeholder="e.g. Sats Bananas" required className="h-12 text-base" />
+            {hasPrefill ? (
+              <div className="p-4 rounded-lg border border-border bg-muted/30">
+                <p className="font-medium text-foreground">{growerName}</p>
+                {growerCode && <p className="text-sm text-muted-foreground">Code: {growerCode}</p>}
+                {growerEmail && <p className="text-sm text-muted-foreground">{growerEmail}</p>}
+                {growerPhone && <p className="text-sm text-muted-foreground">{growerPhone}</p>}
               </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Grower Code</label>
-                <Input value={growerCode} onChange={e => setGrowerCode(e.target.value)} placeholder="e.g. SAT-001" className="h-12 text-base" />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Business Name *</label>
+                  <Input value={growerName} onChange={e => setGrowerName(e.target.value)} placeholder="e.g. Sats Bananas" required className="h-12 text-base" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Grower Code</label>
+                  <Input value={growerCode} onChange={e => setGrowerCode(e.target.value)} placeholder="e.g. SAT-001" className="h-12 text-base" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Email</label>
+                  <Input type="email" value={growerEmail} onChange={e => setGrowerEmail(e.target.value)} placeholder="your@email.com" className="h-12 text-base" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Phone</label>
+                  <Input type="tel" value={growerPhone} onChange={e => setGrowerPhone(e.target.value)} placeholder="04xx xxx xxx" className="h-12 text-base" />
+                </div>
               </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Email</label>
-                <Input type="email" value={growerEmail} onChange={e => setGrowerEmail(e.target.value)} placeholder="your@email.com" className="h-12 text-base" />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Phone</label>
-                <Input type="tel" value={growerPhone} onChange={e => setGrowerPhone(e.target.value)} placeholder="04xx xxx xxx" className="h-12 text-base" />
-              </div>
-            </div>
+            )}
           </section>
 
-          {/* Carrier Con Note — PROMINENT */}
+          {/* Transporter's Sheet */}
           <section className="space-y-3">
-            <h2 className="text-sm font-display uppercase tracking-widest text-muted-foreground">Carrier Con Note (Pink Sheet)</h2>
+            <h2 className="text-sm font-display uppercase tracking-widest text-muted-foreground">Transporter's Sheet</h2>
             <div className="p-4 rounded-lg border-2 border-accent/50 bg-accent/5 space-y-4">
               <div>
                 <label className="text-sm font-medium mb-1 block">Con Note Number</label>
                 <Input
                   value={conNoteNumber}
                   onChange={e => setConNoteNumber(e.target.value)}
-                  placeholder="Number on your pink sheet"
+                  placeholder="Number on the transporter's sheet"
                   className="h-12 text-base font-medium"
                 />
                 <p className="text-xs text-muted-foreground mt-1">The number on the carrier's freight consignment note</p>
@@ -316,7 +335,7 @@ export default function PublicSubmitPage() {
                     <span className="text-sm text-muted-foreground">Take photo or choose file</span>
                   </Button>
                 )}
-                <p className="text-xs text-muted-foreground mt-1">Snap a photo of your signed pink sheet — helps everyone cross-reference</p>
+                <p className="text-xs text-muted-foreground mt-1">Snap a photo of the signed transporter's sheet — helps everyone cross-reference</p>
               </div>
             </div>
           </section>

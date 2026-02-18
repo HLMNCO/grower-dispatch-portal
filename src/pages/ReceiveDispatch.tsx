@@ -343,7 +343,7 @@ export default function ReceiveDispatch() {
             </div>
             {dispatch.transporter_con_note_photo_url && (
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Pink Sheet Photo</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Transporter's Sheet Photo</p>
                 <a href={dispatch.transporter_con_note_photo_url} target="_blank" rel="noopener noreferrer">
                   <img src={dispatch.transporter_con_note_photo_url} alt="Carrier con note" className="rounded-lg max-h-32 object-cover border border-border" />
                   <span className="text-xs text-primary mt-1 inline-block">View full image</span>
@@ -366,12 +366,12 @@ export default function ReceiveDispatch() {
                   placeholder="Enter your freight con note number"
                   className="text-lg h-12"
                 />
-                <p className="text-xs text-muted-foreground">This is the number on your pink sheet / freight consignment note</p>
+                 <p className="text-xs text-muted-foreground">This is the number on the transporter's freight consignment sheet</p>
               </div>
               <div className="space-y-2">
-                <Label>Photo of Con Note (Pink Sheet)</Label>
+                <Label>Photo of Transporter's Sheet</Label>
                 <PhotoUpload photos={conNotePhotos} onPhotosChange={setConNotePhotos} folder="con-notes" max={1} compact />
-                <p className="text-xs text-muted-foreground">Optional but recommended — photo of your signed pink sheet for proof of pickup</p>
+                <p className="text-xs text-muted-foreground">Optional but recommended — photo of the signed sheet for proof of pickup</p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">

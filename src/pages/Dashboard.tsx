@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format, addDays, isSameDay } from 'date-fns';
-import { Package, Truck, AlertTriangle, CheckCircle2, Clock, ArrowRight, Search, Filter, LogOut, Users, Plus, CalendarDays, Bell, BarChart3, FileText, ClipboardCheck, Link2, Copy } from 'lucide-react';
+import { Package, Truck, AlertTriangle, CheckCircle2, Clock, ArrowRight, Search, Filter, LogOut, Users, Plus, CalendarDays, Bell, BarChart3, FileText, ClipboardCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import ConnectionsPage from './ConnectionsPage';
 import ReceivingCalendar from '@/components/ReceivingCalendar';
+import SupplierIntakeLinkDialog from '@/components/SupplierIntakeLinkDialog';
 
 interface DispatchRow {
   id: string;
@@ -152,18 +153,9 @@ export default function Dashboard() {
             )}
             {isReceiver && (
               <>
-                <Button size="sm" variant="outline" className="font-display tracking-wide"
-                  onClick={async () => {
-                    if (!business) return;
-                    const { data } = await supabase.from('businesses').select('public_intake_token').eq('id', business.id).single();
-                    if (data?.public_intake_token) {
-                      const url = `${window.location.origin}/submit/${data.public_intake_token}`;
-                      navigator.clipboard.writeText(url);
-                      toast({ title: 'Link copied!', description: 'Share this with your suppliers so they can submit dispatches.' });
-                    }
-                  }}>
-                  <Link2 className="h-4 w-4 mr-1" /> Supplier Intake Link
-                </Button>
+                {business?.public_intake_token && (
+                  <SupplierIntakeLinkDialog intakeToken={business.public_intake_token} />
+                )}
                 <Link to="/receiver/verify">
                   <Button size="sm" variant="outline" className="font-display tracking-wide">
                     <ClipboardCheck className="h-4 w-4 mr-1" /> Verify Delivery

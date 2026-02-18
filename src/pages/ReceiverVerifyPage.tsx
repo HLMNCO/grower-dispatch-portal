@@ -146,7 +146,7 @@ export default function ReceiverVerifyPage() {
           <div className="p-8 rounded-xl border border-border bg-card text-center space-y-3">
             <Package className="h-10 w-10 text-muted-foreground mx-auto" />
             <h3 className="font-display text-lg">No delivery found for '{searchInput}'</h3>
-            <p className="text-sm text-muted-foreground">Check the DA number on the delivery advice, or the number on the carrier's pink sheet.</p>
+            <p className="text-sm text-muted-foreground">Check the DA number on the delivery advice, or the number on the transporter's sheet.</p>
             <Link to="/" className="text-primary text-sm font-display inline-block mt-2">View all inbound dispatches →</Link>
           </div>
         )}
@@ -205,9 +205,9 @@ export default function ReceiverVerifyPage() {
               {/* Con note photo */}
               {dispatch.transporter_con_note_photo_url && (
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Pink Sheet Photo</p>
+                   <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Transporter's Sheet Photo</p>
                   <a href={dispatch.transporter_con_note_photo_url} target="_blank" rel="noopener noreferrer">
-                    <img src={dispatch.transporter_con_note_photo_url} alt="Pink sheet" className="rounded-lg max-h-32 border border-border" />
+                    <img src={dispatch.transporter_con_note_photo_url} alt="Transporter's sheet" className="rounded-lg max-h-32 border border-border" />
                   </a>
                 </div>
               )}
