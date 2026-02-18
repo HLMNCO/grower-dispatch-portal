@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { PRODUCE_CATEGORIES, TRAY_TYPES, SIZES } from '@/types/dispatch';
 import { toast } from '@/hooks/use-toast';
+import PastDispatches from '@/components/PastDispatches';
 
 interface LineItem {
   product: string;
@@ -53,6 +54,7 @@ export default function PublicSubmitPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [resultMessage, setResultMessage] = useState('');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Con note photo
   const [conNotePhoto, setConNotePhoto] = useState<File | null>(null);
@@ -179,6 +181,7 @@ export default function PublicSubmitPage() {
       }
 
       setResultMessage(data?.message || 'Dispatch submitted successfully!');
+      setRefreshTrigger(prev => prev + 1);
       setSubmitted(true);
     } catch (err: any) {
       toast({ title: 'Submission failed', description: err.message, variant: 'destructive' });
@@ -459,10 +462,18 @@ export default function PublicSubmitPage() {
             {submitting ? <><Loader2 className="h-5 w-5 mr-2 animate-spin" /> Submitting...</> : 'Submit Dispatch'}
           </Button>
 
-          <p className="text-xs text-center text-muted-foreground pb-6">
-            Powered by FreshDock · This dispatch will be sent directly to {receiverName}
-          </p>
         </form>
+
+        {/* Past Dispatches — shown below the form */}
+        {growerName && token && (
+          <div className="mt-8 mb-6">
+            <PastDispatches intakeToken={token} growerName={growerName} refreshTrigger={refreshTrigger} />
+          </div>
+        )}
+
+        <p className="text-xs text-center text-muted-foreground pb-6">
+          Powered by FreshDock · This dispatch will be sent directly to {receiverName}
+        </p>
       </div>
     </div>
   );
