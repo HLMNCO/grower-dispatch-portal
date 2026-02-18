@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { ArrowLeft, CheckCircle2, AlertTriangle, Plus, Package, Truck, FileText, Download, Hash } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, AlertTriangle, Plus, Package, Truck, FileText, Download, Hash, SplitSquareVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PhotoUpload } from '@/components/PhotoUpload';
 import { DispatchTimeline } from '@/components/DispatchTimeline';
 import { generateDeliveryAdvicePDF } from '@/services/deliveryAdviceGenerator';
+import { Switch } from '@/components/ui/switch';
 
 interface DispatchDetail {
   id: string;
@@ -43,6 +44,7 @@ interface DispatchDetail {
   receiver_business_id: string | null;
   transporter_business_id: string | null;
   internal_lot_number: string | null;
+  is_split_load: boolean;
 }
 
 interface ItemRow {
@@ -182,7 +184,7 @@ export default function ReceiveDispatch() {
     });
   };
 
-  const handleReceive = async () => {
+  const handleReceive = async (partial = false) => {
     if (!id || !user) return;
 
     // Save any pending received qtys first
@@ -200,22 +202,44 @@ export default function ReceiveDispatch() {
       await supabase.from('dispatches').update({ internal_lot_number: lotNumber.trim() } as any).eq('id', id);
     }
 
-    const newStatus = issues.length > 0 ? 'issue' : 'received';
-    await supabase.from('dispatches').update({ status: newStatus }).eq('id', id);
-    await supabase.from('dispatch_events').insert({
-      dispatch_id: id,
-      event_type: 'received',
-      triggered_by_user_id: user.id,
-      triggered_by_role: 'staff',
-      metadata: { internal_lot_number: lotNumber.trim() || null },
-    });
-    toast({
-      title: issues.length > 0 ? 'Stock Received with Issues' : 'Stock Received',
-      description: issues.length > 0
-        ? `${dispatch?.display_id} received. ${issues.length} issue(s) flagged.`
-        : `${dispatch?.display_id} received successfully.`,
-    });
-    setDispatch(prev => prev ? { ...prev, status: newStatus } : prev);
+    if (partial) {
+      // Partial receive — split load, more stock coming
+      await supabase.from('dispatches').update({ status: 'partially-received' }).eq('id', id);
+      await supabase.from('dispatch_events').insert({
+        dispatch_id: id,
+        event_type: 'partially_received',
+        triggered_by_user_id: user.id,
+        triggered_by_role: 'staff',
+        metadata: { 
+          internal_lot_number: lotNumber.trim() || null,
+          received_quantities: receivedQtys,
+          note: 'Split load — awaiting remaining stock',
+        },
+      });
+      toast({
+        title: 'Partial Receive Recorded',
+        description: `${dispatch?.display_id} partially received. Awaiting remaining stock.`,
+      });
+      setDispatch(prev => prev ? { ...prev, status: 'partially-received' } : prev);
+    } else {
+      // Full receive
+      const newStatus = issues.length > 0 ? 'issue' : 'received';
+      await supabase.from('dispatches').update({ status: newStatus }).eq('id', id);
+      await supabase.from('dispatch_events').insert({
+        dispatch_id: id,
+        event_type: 'received',
+        triggered_by_user_id: user.id,
+        triggered_by_role: 'staff',
+        metadata: { internal_lot_number: lotNumber.trim() || null },
+      });
+      toast({
+        title: issues.length > 0 ? 'Stock Received with Issues' : 'Stock Received — Consignment Complete',
+        description: issues.length > 0
+          ? `${dispatch?.display_id} received. ${issues.length} issue(s) flagged.`
+          : `${dispatch?.display_id} received in full.`,
+      });
+      setDispatch(prev => prev ? { ...prev, status: newStatus } : prev);
+    }
   };
 
   const handleMarkArrived = async () => {
@@ -596,6 +620,36 @@ export default function ReceiveDispatch() {
         {/* Dispatch Timeline */}
         <DispatchTimeline dispatchId={id!} />
 
+        {/* Split Load Toggle — receiver only */}
+        {isReceiver && dispatch.status !== 'received' && (
+          <section className="space-y-3">
+            <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+              <SplitSquareVertical className="h-4 w-4" /> Split Load
+            </h2>
+            <div className="p-4 rounded-lg border border-border bg-card flex items-center justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">This is a split load (multiple deliveries)</p>
+                <p className="text-xs text-muted-foreground">
+                  Enable if this consignment will arrive across multiple trucks. You can partially receive stock as it comes in.
+                </p>
+              </div>
+              <Switch
+                checked={dispatch.is_split_load}
+                onCheckedChange={async (checked) => {
+                  await supabase.from('dispatches').update({ is_split_load: checked } as any).eq('id', id);
+                  setDispatch(prev => prev ? { ...prev, is_split_load: checked } : prev);
+                  toast({ title: checked ? 'Marked as split load' : 'Split load removed' });
+                }}
+              />
+            </div>
+            {dispatch.is_split_load && dispatch.status === 'partially-received' && (
+              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-700">
+                <strong>Partially received</strong> — some stock from this consignment has been checked in. Awaiting remaining delivery/deliveries before closing.
+              </div>
+            )}
+          </section>
+        )}
+
         {/* Actions — receiver only */}
         {isReceiver && dispatch.status !== 'received' && (
           <div className="flex gap-3 pt-4 border-t border-border">
@@ -604,9 +658,14 @@ export default function ReceiveDispatch() {
                 <Package className="h-4 w-4 mr-2" /> Mark as Arrived
               </Button>
             )}
-            {(dispatch.status === 'arrived' || dispatch.status === 'in-transit' || dispatch.status === 'pending') && (
-              <Button onClick={handleReceive} size="lg" className="flex-1 font-display tracking-wide">
-                <CheckCircle2 className="h-4 w-4 mr-2" /> Confirm Received
+            {dispatch.is_split_load && (dispatch.status === 'arrived' || dispatch.status === 'partially-received' || dispatch.status === 'in-transit' || dispatch.status === 'pending') && (
+              <Button onClick={() => handleReceive(true)} size="lg" variant="outline" className="flex-1 font-display tracking-wide border-amber-500/30 text-amber-700 hover:bg-amber-500/10">
+                <Package className="h-4 w-4 mr-2" /> Receive Partial Load
+              </Button>
+            )}
+            {(dispatch.status === 'arrived' || dispatch.status === 'in-transit' || dispatch.status === 'pending' || dispatch.status === 'partially-received') && (
+              <Button onClick={() => handleReceive(false)} size="lg" className="flex-1 font-display tracking-wide">
+                <CheckCircle2 className="h-4 w-4 mr-2" /> {dispatch.is_split_load ? 'Confirm Full Consignment Received' : 'Confirm Received'}
               </Button>
             )}
           </div>
