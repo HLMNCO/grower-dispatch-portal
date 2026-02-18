@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Package, Plus, Trash2, CheckCircle2, Loader2, Camera, X, ImageIcon } from 'lucide-react';
+import { Package, Plus, Trash2, CheckCircle2, Loader2, Camera, X, ImageIcon, Bookmark } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -250,6 +250,14 @@ export default function PublicSubmitPage() {
           <p className="text-muted-foreground text-sm">
             Sending to <span className="font-semibold text-foreground">{receiverName}</span>
           </p>
+          {hasPrefill && (
+            <div className="mt-3 flex items-start gap-2 p-3 rounded-lg bg-muted/40 border border-border text-xs text-muted-foreground">
+              <Bookmark className="h-4 w-4 shrink-0 mt-0.5 text-primary/60" />
+              <span>
+                <strong className="text-foreground/80">Tip:</strong> Bookmark this page so you can quickly submit future dispatches without needing a new link.
+              </span>
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

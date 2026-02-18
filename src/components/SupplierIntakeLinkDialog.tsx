@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Copy, CheckCircle2, Link2 } from 'lucide-react';
+import { Copy, CheckCircle2, Link2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription,
 } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   intakeToken: string;
@@ -18,24 +19,50 @@ export default function SupplierIntakeLinkDialog({ intakeToken }: Props) {
   const [growerEmail, setGrowerEmail] = useState('');
   const [growerPhone, setGrowerPhone] = useState('');
   const [copied, setCopied] = useState(false);
+  const [generatedUrl, setGeneratedUrl] = useState('');
+  const [generating, setGenerating] = useState(false);
 
-  const generateLink = () => {
+  const generateLink = async () => {
     if (!growerName.trim()) {
       toast({ title: 'Missing field', description: 'Enter the grower\'s business name', variant: 'destructive' });
       return;
     }
 
-    const params = new URLSearchParams();
-    params.set('name', growerName.trim());
-    if (growerCode.trim()) params.set('code', growerCode.trim());
-    if (growerEmail.trim()) params.set('email', growerEmail.trim());
-    if (growerPhone.trim()) params.set('phone', growerPhone.trim());
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase
+        .from('supplier_intake_links')
+        .insert({
+          intake_token: intakeToken,
+          grower_name: growerName.trim(),
+          grower_code: growerCode.trim() || null,
+          grower_email: growerEmail.trim() || null,
+          grower_phone: growerPhone.trim() || null,
+          created_by: (await supabase.auth.getUser()).data.user?.id,
+        })
+        .select('short_code')
+        .single();
 
-    const url = `${window.location.origin}/submit/${intakeToken}?${params.toString()}`;
-    navigator.clipboard.writeText(url);
+      if (error) throw error;
+
+      const url = `${window.location.origin}/s/${data.short_code}`;
+      setGeneratedUrl(url);
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast({ title: 'Link copied!', description: `Share this short link with ${growerName.trim()} — they'll only need to fill in dispatch details.` });
+      setTimeout(() => setCopied(false), 3000);
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to generate link', variant: 'destructive' });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const copyAgain = async () => {
+    await navigator.clipboard.writeText(generatedUrl);
     setCopied(true);
-    toast({ title: 'Link copied!', description: `Share this link with ${growerName.trim()} — they'll only need to fill in dispatch details.` });
-    setTimeout(() => setCopied(false), 3000);
+    toast({ title: 'Copied!' });
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const resetForm = () => {
@@ -44,6 +71,7 @@ export default function SupplierIntakeLinkDialog({ intakeToken }: Props) {
     setGrowerEmail('');
     setGrowerPhone('');
     setCopied(false);
+    setGeneratedUrl('');
   };
 
   return (
@@ -57,7 +85,7 @@ export default function SupplierIntakeLinkDialog({ intakeToken }: Props) {
         <DialogHeader>
           <DialogTitle className="font-display tracking-tight">Create Grower Link</DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            Set up the grower's details first. They'll get a link where they only need to enter dispatch info, products, and snap the transporter's sheet.
+            Set up the grower's details first. They'll get a short link where they only need to enter dispatch info, products, and snap the transporter's sheet.
           </DialogDescription>
         </DialogHeader>
 
@@ -69,6 +97,7 @@ export default function SupplierIntakeLinkDialog({ intakeToken }: Props) {
               onChange={e => setGrowerName(e.target.value)}
               placeholder="e.g. Sats Bananas"
               className="h-11"
+              disabled={!!generatedUrl}
             />
           </div>
           <div>
@@ -78,6 +107,7 @@ export default function SupplierIntakeLinkDialog({ intakeToken }: Props) {
               onChange={e => setGrowerCode(e.target.value)}
               placeholder="e.g. SAT-001"
               className="h-11"
+              disabled={!!generatedUrl}
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -89,6 +119,7 @@ export default function SupplierIntakeLinkDialog({ intakeToken }: Props) {
                 onChange={e => setGrowerEmail(e.target.value)}
                 placeholder="grower@email.com"
                 className="h-11"
+                disabled={!!generatedUrl}
               />
             </div>
             <div>
@@ -99,14 +130,29 @@ export default function SupplierIntakeLinkDialog({ intakeToken }: Props) {
                 onChange={e => setGrowerPhone(e.target.value)}
                 placeholder="04xx xxx xxx"
                 className="h-11"
+                disabled={!!generatedUrl}
               />
             </div>
           </div>
         </div>
 
-        <Button onClick={generateLink} className="w-full mt-4 h-11 font-display tracking-wide">
-          {copied ? <><CheckCircle2 className="h-4 w-4 mr-2" /> Copied!</> : <><Copy className="h-4 w-4 mr-2" /> Generate & Copy Link</>}
-        </Button>
+        {generatedUrl ? (
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
+              <code className="text-sm font-mono flex-1 truncate text-foreground">{generatedUrl}</code>
+              <Button size="sm" variant="ghost" onClick={copyAgain}>
+                {copied ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+            <Button variant="outline" className="w-full" onClick={resetForm}>
+              Create Another Link
+            </Button>
+          </div>
+        ) : (
+          <Button onClick={generateLink} className="w-full mt-4 h-11 font-display tracking-wide" disabled={generating}>
+            {generating ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating...</> : <><Copy className="h-4 w-4 mr-2" /> Generate & Copy Link</>}
+          </Button>
+        )}
       </DialogContent>
     </Dialog>
   );

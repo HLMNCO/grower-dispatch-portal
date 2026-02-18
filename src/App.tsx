@@ -14,6 +14,7 @@ import QRScanPage from "./pages/QRScanPage";
 import ReceiverVerifyPage from "./pages/ReceiverVerifyPage";
 import SupplierTemplatesPage from "./pages/SupplierTemplatesPage";
 import PublicSubmitPage from "./pages/PublicSubmitPage";
+import ShortLinkRedirect from "./pages/ShortLinkRedirect";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ const AppRoutes = () => (
       <Route path="/planning" element={<ProtectedRoute><InboundPlanning /></ProtectedRoute>} />
       <Route path="/dispatch/scan/:token" element={<QRScanPage />} />
       <Route path="/submit/:token" element={<PublicSubmitPage />} />
+      <Route path="/s/:code" element={<ShortLinkRedirect />} />
       <Route path="/receiver/verify" element={<ProtectedRoute><ReceiverVerifyPage /></ProtectedRoute>} />
       <Route path="/supplier/templates" element={<ProtectedRoute><SupplierTemplatesPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
