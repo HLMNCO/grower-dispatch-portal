@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 
+export type StaffPosition = 'admin' | 'warehouse_manager' | 'operations' | 'forklift_driver' | 'dock_hand';
+
 interface Business {
   id: string;
   name: string;
@@ -17,6 +19,10 @@ interface AuthContextType {
   role: 'staff' | 'supplier' | 'transporter' | null;
   roleLoaded: boolean;
   business: Business | null;
+  staffPosition: StaffPosition | null;
+  isAdmin: boolean;
+  canPlan: boolean;
+  canReceive: boolean;
   signOut: () => Promise<void>;
   refreshBusiness: () => Promise<void>;
 }
@@ -28,6 +34,10 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   roleLoaded: false,
   business: null,
+  staffPosition: null,
+  isAdmin: false,
+  canPlan: false,
+  canReceive: false,
   signOut: async () => {},
   refreshBusiness: async () => {},
 });
@@ -41,6 +51,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 const [role, setRole] = useState<'staff' | 'supplier' | 'transporter' | null>(null);
   const [roleLoaded, setRoleLoaded] = useState(false);
   const [business, setBusiness] = useState<Business | null>(null);
+  const [staffPosition, setStaffPosition] = useState<StaffPosition | null>(null);
+
+  const isAdmin = staffPosition === 'admin';
+  const canPlan = ['admin', 'warehouse_manager', 'operations'].includes(staffPosition || '');
+  const canReceive = role === 'staff'; // all staff can receive
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -51,11 +66,13 @@ const [role, setRole] = useState<'staff' | 'supplier' | 'transporter' | null>(nu
         setTimeout(() => {
           fetchRole(session.user.id);
           fetchBusiness(session.user.id);
+          fetchStaffPosition(session.user.id);
         }, 0);
       } else {
         setRole(null);
         setRoleLoaded(false);
         setBusiness(null);
+        setStaffPosition(null);
         setLoading(false);
       }
     });
@@ -67,6 +84,7 @@ const [role, setRole] = useState<'staff' | 'supplier' | 'transporter' | null>(nu
         setRoleLoaded(false);
         fetchRole(session.user.id);
         fetchBusiness(session.user.id);
+        fetchStaffPosition(session.user.id);
       } else {
         setLoading(false);
       }
@@ -97,6 +115,15 @@ const [role, setRole] = useState<'staff' | 'supplier' | 'transporter' | null>(nu
     }
   };
 
+  const fetchStaffPosition = async (userId: string) => {
+    const { data } = await supabase
+      .from('staff_positions')
+      .select('position')
+      .eq('user_id', userId)
+      .maybeSingle();
+    setStaffPosition((data?.position as StaffPosition) ?? null);
+  };
+
   const refreshBusiness = async () => {
     if (user) await fetchBusiness(user.id);
   };
@@ -106,7 +133,7 @@ const [role, setRole] = useState<'staff' | 'supplier' | 'transporter' | null>(nu
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, role, roleLoaded, business, signOut, refreshBusiness }}>
+    <AuthContext.Provider value={{ user, session, loading, role, roleLoaded, business, staffPosition, isAdmin, canPlan, canReceive, signOut, refreshBusiness }}>
       {children}
     </AuthContext.Provider>
   );

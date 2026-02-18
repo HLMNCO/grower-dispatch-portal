@@ -79,7 +79,7 @@ function SupplierSidebar({ onClose }: { onClose?: () => void }) {
 }
 
 function ReceiverSidebar({ onClose }: { onClose?: () => void }) {
-  const { signOut } = useAuth();
+  const { signOut, isAdmin, canPlan } = useAuth();
   const { pathname } = useLocation();
 
   return (
@@ -97,7 +97,9 @@ function ReceiverSidebar({ onClose }: { onClose?: () => void }) {
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         <NavItem to="/" icon={LayoutDashboard} label="Receiving Dashboard" active={pathname === '/'} onClick={onClose} />
         <NavItem to="/receiver/verify" icon={CheckCircle2} label="Receive Produce" active={pathname === '/receiver/verify'} onClick={onClose} />
-        <NavItem to="/planning" icon={CalendarDays} label="Inbound Planning" active={pathname === '/planning'} onClick={onClose} />
+        {canPlan && (
+          <NavItem to="/planning" icon={CalendarDays} label="Inbound Planning" active={pathname === '/planning'} onClick={onClose} />
+        )}
 
         <div className="h-px bg-sidebar-border my-3" />
 

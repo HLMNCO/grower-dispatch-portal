@@ -120,7 +120,7 @@ export default function Dashboard() {
   const [dispatches, setDispatches] = useState<DispatchRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dispatches');
-  const { role, business, signOut } = useAuth();
+  const { role, business, signOut, isAdmin, canPlan } = useAuth();
   const navigate = useNavigate();
 
   const isSupplier = role === 'supplier' || business?.business_type === 'supplier';
@@ -206,11 +206,13 @@ export default function Dashboard() {
                       <ClipboardCheck className="h-4 w-4 mr-1" /> Receive
                     </Button>
                   </Link>
-                  <Link to="/planning">
-                    <Button size="sm" variant="outline" className="font-display tracking-wide">
-                      <BarChart3 className="h-4 w-4 mr-1" /> Planning
-                    </Button>
-                  </Link>
+                  {canPlan && (
+                    <Link to="/planning">
+                      <Button size="sm" variant="outline" className="font-display tracking-wide">
+                        <BarChart3 className="h-4 w-4 mr-1" /> Planning
+                      </Button>
+                    </Link>
+                  )}
                 </>
               )}
               <Button variant="ghost" size="sm" onClick={signOut}>
@@ -238,7 +240,7 @@ export default function Dashboard() {
           <TabsContent value="dispatches" className="space-y-4 sm:space-y-6">
             {/* Tomorrow's Arrivals Summary */}
             {isReceiver && <TomorrowSummary dispatches={dispatches} />}
-            {isReceiver && <StaffRequests />}
+            {isReceiver && isAdmin && <StaffRequests />}
 
             {/* Stat Cards — 3+2 layout on mobile, 5 on desktop */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
