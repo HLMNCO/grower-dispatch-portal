@@ -24,6 +24,8 @@ Deno.serve(async (req) => {
       dispatch_date,
       expected_arrival,
       carrier,
+      con_note_number,
+      con_note_photo_url,
       items,
       notes,
       total_pallets,
@@ -84,7 +86,8 @@ Deno.serve(async (req) => {
         carrier: carrier?.trim() || null,
         notes: notes?.trim() || null,
         total_pallets: total_pallets || 1,
-        transporter_con_note_number: '',
+        transporter_con_note_number: con_note_number || '',
+        transporter_con_note_photo_url: con_note_photo_url || null,
         receiver_business_id: receiverBiz.id,
         supplier_id: receiverBiz.owner_id, // placeholder — public submissions owned by receiver
         status: 'pending',
