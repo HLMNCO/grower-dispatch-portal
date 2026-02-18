@@ -266,6 +266,8 @@ export type Database = {
           pickup_time: string | null
           qr_code_token: string | null
           receiver_business_id: string | null
+          receiving_photos: string[] | null
+          receiving_temperature: number | null
           status: string
           supplier_business_id: string | null
           supplier_id: string
@@ -301,6 +303,8 @@ export type Database = {
           pickup_time?: string | null
           qr_code_token?: string | null
           receiver_business_id?: string | null
+          receiving_photos?: string[] | null
+          receiving_temperature?: number | null
           status?: string
           supplier_business_id?: string | null
           supplier_id: string
@@ -336,6 +340,8 @@ export type Database = {
           pickup_time?: string | null
           qr_code_token?: string | null
           receiver_business_id?: string | null
+          receiving_photos?: string[] | null
+          receiving_temperature?: number | null
           status?: string
           supplier_business_id?: string | null
           supplier_id?: string
