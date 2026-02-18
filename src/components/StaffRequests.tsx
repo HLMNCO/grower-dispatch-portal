@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import type { StaffPosition } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { UserPlus, Check, X, Sprout, Package, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
@@ -34,6 +36,15 @@ export default function StaffRequests() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [growerDetails, setGrowerDetails] = useState<Record<string, GrowerDetails>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [selectedPositions, setSelectedPositions] = useState<Record<string, StaffPosition>>({});
+
+  const staffPositionLabels: Record<StaffPosition, string> = {
+    admin: 'Admin',
+    warehouse_manager: 'Warehouse Manager',
+    operations: 'Operations / Office',
+    forklift_driver: 'Forklift Driver',
+    dock_hand: 'Dock Hand',
+  };
 
   useEffect(() => {
     fetchRequests();
@@ -130,6 +141,15 @@ export default function StaffRequests() {
       return;
     }
 
+    // Assign staff position if staff role
+    if (role === 'staff') {
+      const position = selectedPositions[request.id] || 'dock_hand';
+      await supabase.from('staff_positions').insert({
+        user_id: request.user_id,
+        position: position,
+      });
+    }
+
     await supabase.from('staff_requests').update({
       status: 'approved',
       reviewed_by: user.id,
@@ -144,7 +164,7 @@ export default function StaffRequests() {
       }).eq('user_id', request.user_id);
     }
 
-    toast({ title: `${request.display_name} approved as ${role}` });
+    toast({ title: `${request.display_name} approved as ${role === 'staff' ? staffPositionLabels[selectedPositions[request.id] || 'dock_hand'] : 'Grower'}` });
     setRequests(prev => prev.filter(r => r.id !== request.id));
   };
 
@@ -197,6 +217,22 @@ export default function StaffRequests() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Staff position selector */}
+                  {!isSupplier && (
+                    <Select
+                      value={selectedPositions[req.id] || 'dock_hand'}
+                      onValueChange={(v) => setSelectedPositions(prev => ({ ...prev, [req.id]: v as StaffPosition }))}
+                    >
+                      <SelectTrigger className="h-8 w-[140px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(staffPositionLabels).map(([val, label]) => (
+                          <SelectItem key={val} value={val} className="text-xs">{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   {isSupplier && details && (
                     <Button
                       size="sm"

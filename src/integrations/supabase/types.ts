@@ -464,6 +464,30 @@ export type Database = {
           },
         ]
       }
+      staff_positions: {
+        Row: {
+          created_at: string
+          id: string
+          position: Database["public"]["Enums"]["staff_position"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          position?: Database["public"]["Enums"]["staff_position"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          position?: Database["public"]["Enums"]["staff_position"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       staff_requests: {
         Row: {
           created_at: string
@@ -575,9 +599,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "staff" | "supplier" | "transporter"
+      staff_position:
+        | "admin"
+        | "warehouse_manager"
+        | "operations"
+        | "forklift_driver"
+        | "dock_hand"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -706,6 +737,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["staff", "supplier", "transporter"],
+      staff_position: [
+        "admin",
+        "warehouse_manager",
+        "operations",
+        "forklift_driver",
+        "dock_hand",
+      ],
     },
   },
 } as const
