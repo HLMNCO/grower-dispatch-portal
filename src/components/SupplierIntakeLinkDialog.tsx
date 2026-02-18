@@ -138,15 +138,18 @@ export default function SupplierIntakeLinkDialog({ intakeToken }: Props) {
 
         {generatedUrl ? (
           <div className="mt-4 space-y-3">
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
-              <code className="text-sm font-mono flex-1 truncate text-foreground">{generatedUrl}</code>
-              <Button size="sm" variant="ghost" onClick={copyAgain}>
-                {copied ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
+            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Link ready — copied to clipboard!</p>
+              <p className="text-sm font-mono font-medium text-primary">/s/{generatedUrl.split('/s/')[1]}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1" onClick={copyAgain}>
+                {copied ? <><CheckCircle2 className="h-4 w-4 mr-1.5 text-primary" /> Copied</> : <><Copy className="h-4 w-4 mr-1.5" /> Copy Again</>}
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1" onClick={resetForm}>
+                Create Another
               </Button>
             </div>
-            <Button variant="outline" className="w-full" onClick={resetForm}>
-              Create Another Link
-            </Button>
           </div>
         ) : (
           <Button onClick={generateLink} className="w-full mt-4 h-11 font-display tracking-wide" disabled={generating}>
