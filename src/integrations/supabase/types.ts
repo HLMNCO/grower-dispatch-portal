@@ -155,6 +155,7 @@ export type Database = {
           id: string
           product: string
           quantity: number
+          received_quantity: number | null
           size: string | null
           tray_type: string | null
           unit_weight: number | null
@@ -167,6 +168,7 @@ export type Database = {
           id?: string
           product: string
           quantity?: number
+          received_quantity?: number | null
           size?: string | null
           tray_type?: string | null
           unit_weight?: number | null
@@ -179,6 +181,7 @@ export type Database = {
           id?: string
           product?: string
           quantity?: number
+          received_quantity?: number | null
           size?: string | null
           tray_type?: string | null
           unit_weight?: number | null
@@ -256,6 +259,7 @@ export type Database = {
           grower_code: string | null
           grower_name: string
           id: string
+          internal_lot_number: string | null
           notes: string | null
           photos: string[] | null
           pickup_time: string | null
@@ -289,6 +293,7 @@ export type Database = {
           grower_code?: string | null
           grower_name: string
           id?: string
+          internal_lot_number?: string | null
           notes?: string | null
           photos?: string[] | null
           pickup_time?: string | null
@@ -322,6 +327,7 @@ export type Database = {
           grower_code?: string | null
           grower_name?: string
           id?: string
+          internal_lot_number?: string | null
           notes?: string | null
           photos?: string[] | null
           pickup_time?: string | null
