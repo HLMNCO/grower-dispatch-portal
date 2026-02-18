@@ -10,6 +10,9 @@ import ReceiveDispatch from "./pages/ReceiveDispatch";
 import InboundPlanning from "./pages/InboundPlanning";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
+import QRScanPage from "./pages/QRScanPage";
+import ReceiverVerifyPage from "./pages/ReceiverVerifyPage";
+import SupplierTemplatesPage from "./pages/SupplierTemplatesPage";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +38,9 @@ const AppRoutes = () => (
       <Route path="/dispatch" element={<ProtectedRoute><SupplierForm /></ProtectedRoute>} />
       <Route path="/receive/:id" element={<ProtectedRoute><ReceiveDispatch /></ProtectedRoute>} />
       <Route path="/planning" element={<ProtectedRoute><InboundPlanning /></ProtectedRoute>} />
+      <Route path="/dispatch/scan/:token" element={<QRScanPage />} />
+      <Route path="/receiver/verify" element={<ProtectedRoute><ReceiverVerifyPage /></ProtectedRoute>} />
+      <Route path="/supplier/templates" element={<ProtectedRoute><SupplierTemplatesPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </BrowserRouter>

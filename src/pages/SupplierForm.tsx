@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
-import { CalendarIcon, Plus, Trash2, Send, Truck, Package } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Send, Truck, Package, Save, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { DispatchItem, PRODUCE_CATEGORIES, TRAY_TYPES, SIZES } from '@/types/dispatch';
 import { toast } from '@/hooks/use-toast';
@@ -16,19 +17,49 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { PhotoUpload } from '@/components/PhotoUpload';
 
+const TEMPERATURE_ZONES = [
+  { value: 'ambient', label: 'Ambient' },
+  { value: 'chilled', label: 'Chilled' },
+  { value: 'frozen', label: 'Frozen' },
+];
+
+const COMMODITY_CLASSES = [
+  { value: 'stone_fruit', label: 'Stone Fruit' },
+  { value: 'citrus', label: 'Citrus' },
+  { value: 'tropicals', label: 'Tropicals' },
+  { value: 'leafy', label: 'Leafy Greens' },
+  { value: 'brassica', label: 'Brassica' },
+  { value: 'herbs', label: 'Herbs' },
+  { value: 'root_veg', label: 'Root Vegetables' },
+  { value: 'capsicum_chilli', label: 'Capsicum & Chilli' },
+  { value: 'other', label: 'Other' },
+];
+
 const emptyItem: DispatchItem = { product: '', variety: '', size: '', trayType: '', quantity: 0, weight: 0 };
+
+interface TemplateRow {
+  id: string;
+  template_name: string;
+  receiver_business_id: string | null;
+  template_data: any;
+  last_used_at: string | null;
+}
 
 export default function SupplierDispatchForm() {
   const { user, business } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [growerName, setGrowerName] = useState('');
   const [growerCode, setGrowerCode] = useState('');
-  const [conNote, setConNote] = useState('');
   const [carrier, setCarrier] = useState('');
   const [truckNumber, setTruckNumber] = useState('');
   const [dispatchDate, setDispatchDate] = useState<Date>();
   const [expectedArrival, setExpectedArrival] = useState<Date>();
+  const [arrivalWindowStart, setArrivalWindowStart] = useState('');
+  const [arrivalWindowEnd, setArrivalWindowEnd] = useState('');
   const [totalPallets, setTotalPallets] = useState('');
+  const [temperatureZone, setTemperatureZone] = useState('');
+  const [commodityClass, setCommodityClass] = useState('');
   const [items, setItems] = useState<DispatchItem[]>([{ ...emptyItem }]);
   const [notes, setNotes] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
@@ -36,17 +67,31 @@ export default function SupplierDispatchForm() {
   const [selectedReceiver, setSelectedReceiver] = useState('');
   const [receivers, setReceivers] = useState<{ id: string; name: string }[]>([]);
 
-  // Pre-fill grower info from business profile
+  // Templates
+  const [templates, setTemplates] = useState<TemplateRow[]>([]);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
   useEffect(() => {
     if (business) {
       setGrowerName(business.name);
+      fetchReceivers();
+      fetchTemplates();
     }
-    fetchReceivers();
   }, [business]);
+
+  // Pre-fill from template if query param
+  useEffect(() => {
+    const templateId = searchParams.get('template');
+    if (templateId && templates.length > 0) {
+      const tmpl = templates.find(t => t.id === templateId);
+      if (tmpl) applyTemplate(tmpl);
+    }
+  }, [templates, searchParams]);
 
   const fetchReceivers = async () => {
     if (!business) return;
-    // Get approved connections
     const { data: conns } = await supabase
       .from('connections')
       .select('receiver_business_id')
@@ -60,6 +105,63 @@ export default function SupplierDispatchForm() {
         .select('id, name')
         .in('id', ids);
       if (bizData) setReceivers(bizData);
+    }
+  };
+
+  const fetchTemplates = async () => {
+    if (!business) return;
+    const { data } = await supabase
+      .from('dispatch_templates')
+      .select('id, template_name, receiver_business_id, template_data, last_used_at')
+      .eq('business_id', business.id)
+      .order('last_used_at', { ascending: false, nullsFirst: false });
+    if (data) setTemplates(data as TemplateRow[]);
+  };
+
+  const applyTemplate = (tmpl: TemplateRow) => {
+    const d = tmpl.template_data as any;
+    if (d.selectedReceiver) setSelectedReceiver(d.selectedReceiver);
+    if (d.carrier) setCarrier(d.carrier);
+    if (d.temperatureZone) setTemperatureZone(d.temperatureZone);
+    if (d.commodityClass) setCommodityClass(d.commodityClass);
+    if (d.totalPallets) setTotalPallets(d.totalPallets);
+    if (d.arrivalWindowStart) setArrivalWindowStart(d.arrivalWindowStart);
+    if (d.arrivalWindowEnd) setArrivalWindowEnd(d.arrivalWindowEnd);
+    if (d.items && d.items.length > 0) setItems(d.items);
+    if (d.notes) setNotes(d.notes);
+    // Update last_used_at
+    supabase.from('dispatch_templates').update({ last_used_at: new Date().toISOString() }).eq('id', tmpl.id).then();
+    toast({ title: 'Template loaded', description: `"${tmpl.template_name}" applied. Update dates and quantities as needed.` });
+  };
+
+  const saveTemplate = async () => {
+    if (!business || !templateName.trim()) return;
+    setSavingTemplate(true);
+    const templateData = {
+      selectedReceiver,
+      carrier,
+      temperatureZone,
+      commodityClass,
+      totalPallets,
+      arrivalWindowStart,
+      arrivalWindowEnd,
+      items,
+      notes,
+    };
+    const { error } = await supabase.from('dispatch_templates').insert([{
+      business_id: business.id,
+      template_name: templateName.trim(),
+      receiver_business_id: selectedReceiver || null,
+      template_data: JSON.parse(JSON.stringify(templateData)),
+    }]);
+    setSavingTemplate(false);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Template saved', description: `"${templateName}" saved for future use.` });
+      setShowSaveTemplate(false);
+      setTemplateName('');
+      fetchTemplates();
     }
   };
 
@@ -80,7 +182,6 @@ export default function SupplierDispatchForm() {
 
     setSubmitting(true);
 
-    // Insert dispatch
     const { data: dispatch, error: dispatchError } = await supabase
       .from('dispatches')
       .insert({
@@ -91,10 +192,14 @@ export default function SupplierDispatchForm() {
         grower_code: growerCode || null,
         dispatch_date: format(dispatchDate, 'yyyy-MM-dd'),
         expected_arrival: expectedArrival ? format(expectedArrival, 'yyyy-MM-dd') : null,
-        con_note_number: conNote,
+        estimated_arrival_window_start: arrivalWindowStart || null,
+        estimated_arrival_window_end: arrivalWindowEnd || null,
+        transporter_con_note_number: '',
         carrier: carrier || null,
         truck_number: truckNumber || null,
         total_pallets: parseInt(totalPallets) || 0,
+        temperature_zone: temperatureZone || null,
+        commodity_class: commodityClass || null,
         notes,
         photos,
       })
@@ -128,10 +233,28 @@ export default function SupplierDispatchForm() {
       }
     }
 
+    // Log created event
+    await supabase.from('dispatch_events').insert({
+      dispatch_id: dispatch.id,
+      event_type: 'created',
+      triggered_by_user_id: user.id,
+      triggered_by_role: 'supplier',
+      metadata: { grower_name: growerName },
+    });
+
+    // Log submitted event
+    await supabase.from('dispatch_events').insert({
+      dispatch_id: dispatch.id,
+      event_type: 'submitted',
+      triggered_by_user_id: user.id,
+      triggered_by_role: 'supplier',
+      metadata: { receiver_business_id: selectedReceiver },
+    });
+
     setSubmitting(false);
     toast({
       title: 'Dispatch Submitted',
-      description: `Con Note ${conNote} has been submitted. Your agent will be notified.`,
+      description: `Your delivery advice has been submitted. Your receiver will be notified.`,
     });
     navigate('/');
   };
@@ -144,7 +267,7 @@ export default function SupplierDispatchForm() {
             <div className="p-2 rounded-lg bg-primary">
               <Truck className="h-5 w-5 text-primary-foreground" />
             </div>
-            <h1 className="text-2xl font-display tracking-tight">Dispatch Advice</h1>
+            <h1 className="text-2xl font-display tracking-tight">New Delivery Advice</h1>
             <span className="ml-auto text-xs font-display text-muted-foreground tracking-wider">FRESHDOCK</span>
           </div>
           <p className="text-muted-foreground">Submit your dispatch details so we can plan receiving and get your produce to market faster.</p>
@@ -152,6 +275,29 @@ export default function SupplierDispatchForm() {
       </header>
 
       <form onSubmit={handleSubmit} className="container max-w-3xl py-8 space-y-8">
+        {/* Template selector */}
+        {templates.length > 0 && (
+          <section className="space-y-2">
+            <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">Use a Template</h2>
+            <Select onValueChange={(v) => {
+              const tmpl = templates.find(t => t.id === v);
+              if (tmpl) applyTemplate(tmpl);
+            }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a saved template..." />
+              </SelectTrigger>
+              <SelectContent>
+                {templates.map(t => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.template_name}
+                    {t.last_used_at && <span className="text-muted-foreground ml-2 text-xs">· Last used {format(new Date(t.last_used_at), 'dd MMM')}</span>}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </section>
+        )}
+
         {/* Sending To */}
         <section className="space-y-4">
           <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">Sending To</h2>
@@ -191,12 +337,8 @@ export default function SupplierDispatchForm() {
 
         {/* Consignment Details */}
         <section className="space-y-4">
-          <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">Consignment</h2>
+          <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">Delivery Details</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="conNote">Con Note Number *</Label>
-              <Input id="conNote" value={conNote} onChange={e => setConNote(e.target.value)} placeholder="e.g. CN-88421" required />
-            </div>
             <div className="space-y-2">
               <Label htmlFor="carrier">Carrier / Transport</Label>
               <Input id="carrier" value={carrier} onChange={e => setCarrier(e.target.value)} placeholder="e.g. Cool Chain Logistics" />
@@ -234,8 +376,30 @@ export default function SupplierDispatchForm() {
               </Popover>
             </div>
             <div className="space-y-2">
+              <Label>Arrival Window Start</Label>
+              <Input type="time" value={arrivalWindowStart} onChange={e => setArrivalWindowStart(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Arrival Window End</Label>
+              <Input type="time" value={arrivalWindowEnd} onChange={e => setArrivalWindowEnd(e.target.value)} />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="pallets">Total Pallets</Label>
               <Input id="pallets" type="number" min={0} value={totalPallets} onChange={e => setTotalPallets(e.target.value)} placeholder="0" />
+            </div>
+            <div className="space-y-2">
+              <Label>Temperature Zone</Label>
+              <Select value={temperatureZone} onValueChange={setTemperatureZone}>
+                <SelectTrigger><SelectValue placeholder="Select zone" /></SelectTrigger>
+                <SelectContent>{TEMPERATURE_ZONES.map(z => <SelectItem key={z.value} value={z.value}>{z.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Commodity Class</Label>
+              <Select value={commodityClass} onValueChange={setCommodityClass}>
+                <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                <SelectContent>{COMMODITY_CLASSES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
           </div>
         </section>
@@ -302,7 +466,7 @@ export default function SupplierDispatchForm() {
         {/* Photos */}
         <section className="space-y-4">
           <h2 className="font-display text-sm uppercase tracking-widest text-muted-foreground">Photos</h2>
-          <p className="text-xs text-muted-foreground">Attach photos of your con note, produce condition, or pallet setup.</p>
+          <p className="text-xs text-muted-foreground">Attach photos of produce condition, pallet setup, or delivery advice.</p>
           <PhotoUpload photos={photos} onPhotosChange={setPhotos} folder="dispatch" max={8} />
         </section>
 
@@ -313,9 +477,32 @@ export default function SupplierDispatchForm() {
         </section>
 
         <Button type="submit" size="lg" className="w-full font-display tracking-wide" disabled={submitting}>
-          <Send className="h-4 w-4 mr-2" /> {submitting ? 'Submitting...' : 'Submit Dispatch Advice'}
+          <Send className="h-4 w-4 mr-2" /> {submitting ? 'Submitting...' : 'Submit Delivery Advice'}
+        </Button>
+
+        <Button type="button" variant="secondary" size="lg" className="w-full font-display tracking-wide" onClick={() => setShowSaveTemplate(true)}>
+          <Save className="h-4 w-4 mr-2" /> Save as Template
         </Button>
       </form>
+
+      {/* Save Template Dialog */}
+      <Dialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display">Save as Template</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            <Label>Template Name</Label>
+            <Input value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder="e.g. Weekly Banana Order" autoFocus />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowSaveTemplate(false)}>Cancel</Button>
+            <Button onClick={saveTemplate} disabled={savingTemplate || !templateName.trim()}>
+              {savingTemplate ? 'Saving...' : 'Save Template'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

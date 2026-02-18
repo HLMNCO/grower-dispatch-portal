@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format, addDays, isSameDay } from 'date-fns';
-import { Package, Truck, AlertTriangle, CheckCircle2, Clock, ArrowRight, Search, Filter, LogOut, Users, Plus, CalendarDays, Bell, BarChart3 } from 'lucide-react';
+import { Package, Truck, AlertTriangle, CheckCircle2, Clock, ArrowRight, Search, Filter, LogOut, Users, Plus, CalendarDays, Bell, BarChart3, FileText, ClipboardCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,7 +17,8 @@ interface DispatchRow {
   display_id: string;
   grower_name: string;
   grower_code: string | null;
-  con_note_number: string;
+  transporter_con_note_number: string;
+  delivery_advice_number: string | null;
   carrier: string | null;
   dispatch_date: string;
   expected_arrival: string | null;
@@ -83,6 +84,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   const isSupplier = role === 'supplier' || business?.business_type === 'supplier';
+  const isReceiver = role === 'staff' || business?.business_type === 'receiver';
 
   useEffect(() => {
     if (business) fetchDispatches();
@@ -93,7 +95,6 @@ export default function Dashboard() {
 
     let query = supabase.from('dispatches').select('*').order('created_at', { ascending: false });
 
-    // Filter by business
     if (business.business_type === 'receiver') {
       query = query.eq('receiver_business_id', business.id);
     } else {
@@ -101,14 +102,15 @@ export default function Dashboard() {
     }
 
     const { data, error } = await query;
-    if (!error && data) setDispatches(data as DispatchRow[]);
+    if (!error && data) setDispatches(data as unknown as DispatchRow[]);
     setLoading(false);
   };
 
   const filtered = dispatches.filter(d => {
     const matchesSearch = !search ||
       d.grower_name.toLowerCase().includes(search.toLowerCase()) ||
-      d.con_note_number.toLowerCase().includes(search.toLowerCase()) ||
+      d.transporter_con_note_number.toLowerCase().includes(search.toLowerCase()) ||
+      (d.delivery_advice_number || '').toLowerCase().includes(search.toLowerCase()) ||
       d.display_id.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'all' || d.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -118,8 +120,6 @@ export default function Dashboard() {
     acc[d.status] = (acc[d.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
-
-  const tomorrow = useMemo(() => addDays(new Date(), 1), []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -136,18 +136,32 @@ export default function Dashboard() {
           </div>
           <div className="flex gap-2 items-center">
             {isSupplier && (
-              <Link to="/dispatch">
-                <Button size="sm" className="font-display tracking-wide">
-                  <Plus className="h-4 w-4 mr-1" /> New Dispatch
-                </Button>
-              </Link>
+              <>
+                <Link to="/dispatch">
+                  <Button size="sm" className="font-display tracking-wide">
+                    <Plus className="h-4 w-4 mr-1" /> New Dispatch
+                  </Button>
+                </Link>
+                <Link to="/supplier/templates">
+                  <Button size="sm" variant="outline" className="font-display tracking-wide">
+                    <FileText className="h-4 w-4 mr-1" /> Templates
+                  </Button>
+                </Link>
+              </>
             )}
-            {!isSupplier && (
-              <Link to="/planning">
-                <Button size="sm" variant="outline" className="font-display tracking-wide">
-                  <BarChart3 className="h-4 w-4 mr-1" /> Planning
-                </Button>
-              </Link>
+            {isReceiver && (
+              <>
+                <Link to="/receiver/verify">
+                  <Button size="sm" variant="outline" className="font-display tracking-wide">
+                    <ClipboardCheck className="h-4 w-4 mr-1" /> Verify Delivery
+                  </Button>
+                </Link>
+                <Link to="/planning">
+                  <Button size="sm" variant="outline" className="font-display tracking-wide">
+                    <BarChart3 className="h-4 w-4 mr-1" /> Planning
+                  </Button>
+                </Link>
+              </>
             )}
             <Button variant="ghost" size="sm" onClick={signOut}>
               <LogOut className="h-4 w-4" />
@@ -172,7 +186,7 @@ export default function Dashboard() {
 
           <TabsContent value="dispatches" className="space-y-6">
             {/* Tomorrow's Arrivals Summary */}
-            {!isSupplier && <TomorrowSummary dispatches={dispatches} />}
+            {isReceiver && <TomorrowSummary dispatches={dispatches} />}
 
             {/* Stat Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -194,7 +208,7 @@ export default function Dashboard() {
             <div className="flex gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search by grower, con note, or ID..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+                <Input placeholder="Search by grower, DA number, or ID..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
               </div>
               {statusFilter !== 'all' && (
                 <Button variant="ghost" size="sm" onClick={() => setStatusFilter('all')}>
@@ -214,7 +228,7 @@ export default function Dashboard() {
                       <tr className="bg-muted/50">
                         <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">ID</th>
                         <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Grower</th>
-                        <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Con Note</th>
+                        <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">DA Number</th>
                         <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Dispatch</th>
                         <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">ETA</th>
                         <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Pallets</th>
@@ -231,7 +245,7 @@ export default function Dashboard() {
                             <div className="font-medium">{dispatch.grower_name}</div>
                             <div className="text-xs text-muted-foreground">{dispatch.grower_code || '-'}</div>
                           </td>
-                          <td className="p-3 font-display text-xs">{dispatch.con_note_number}</td>
+                          <td className="p-3 font-display text-xs">{dispatch.delivery_advice_number || '-'}</td>
                           <td className="p-3 text-muted-foreground">{format(new Date(dispatch.dispatch_date), 'dd MMM')}</td>
                           <td className="p-3 text-muted-foreground">{dispatch.expected_arrival ? format(new Date(dispatch.expected_arrival), 'dd MMM') : '-'}</td>
                           <td className="p-3">{dispatch.total_pallets}</td>

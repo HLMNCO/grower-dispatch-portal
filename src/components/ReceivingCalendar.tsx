@@ -17,7 +17,8 @@ interface CalendarDispatch {
   status: string;
   carrier: string | null;
   truck_number: string | null;
-  con_note_number: string;
+  transporter_con_note_number: string;
+  delivery_advice_number: string | null;
 }
 
 export default function ReceivingCalendar() {
@@ -39,7 +40,7 @@ export default function ReceivingCalendar() {
 
     let query = supabase
       .from('dispatches')
-      .select('id, display_id, grower_name, expected_arrival, dispatch_date, total_pallets, status, carrier, truck_number, con_note_number')
+      .select('id, display_id, grower_name, expected_arrival, dispatch_date, total_pallets, status, carrier, truck_number, transporter_con_note_number, delivery_advice_number')
       .order('expected_arrival', { ascending: true });
 
     if (business.business_type === 'receiver') {
@@ -48,7 +49,6 @@ export default function ReceivingCalendar() {
       query = query.eq('supplier_business_id', business.id);
     }
 
-    // Get dispatches where expected_arrival OR dispatch_date falls in this month
     query = query.or(`expected_arrival.gte.${start},dispatch_date.gte.${start}`)
       .or(`expected_arrival.lte.${end},dispatch_date.lte.${end}`);
 
@@ -71,8 +71,7 @@ export default function ReceivingCalendar() {
   };
 
   const selectedDispatches = selectedDay ? getDispatchesForDay(selectedDay) : [];
-  const startDayOfWeek = startOfMonth(currentMonth).getDay(); // 0=Sun
-
+  const startDayOfWeek = startOfMonth(currentMonth).getDay();
   const totalPalletsForDay = (day: Date) => getDispatchesForDay(day).reduce((s, d) => s + d.total_pallets, 0);
 
   return (
@@ -101,7 +100,6 @@ export default function ReceivingCalendar() {
         <>
           {/* Calendar grid */}
           <div className="rounded-lg border border-border overflow-hidden bg-card">
-            {/* Day headers */}
             <div className="grid grid-cols-7 bg-muted/50">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
                 <div key={d} className="p-2 text-center text-xs font-display uppercase tracking-widest text-muted-foreground border-b border-border">
@@ -110,9 +108,7 @@ export default function ReceivingCalendar() {
               ))}
             </div>
 
-            {/* Day cells */}
             <div className="grid grid-cols-7">
-              {/* Empty cells for offset */}
               {Array.from({ length: startDayOfWeek }).map((_, i) => (
                 <div key={`empty-${i}`} className="min-h-[80px] sm:min-h-[100px] border-b border-r border-border bg-muted/20" />
               ))}
@@ -182,7 +178,7 @@ export default function ReceivingCalendar() {
                       <div className="text-sm font-medium">{d.grower_name}</div>
                       <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <Package className="h-3 w-3" /> {d.con_note_number}
+                          <Package className="h-3 w-3" /> {d.delivery_advice_number || d.transporter_con_note_number}
                         </span>
                         {d.carrier && (
                           <span className="flex items-center gap-1">

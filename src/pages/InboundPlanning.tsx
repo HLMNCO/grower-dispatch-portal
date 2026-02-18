@@ -17,7 +17,7 @@ interface PlanningDispatch {
   total_pallets: number;
   status: string;
   carrier: string | null;
-  con_note_number: string;
+  delivery_advice_number: string | null;
 }
 
 interface PlanningItem {
@@ -31,7 +31,7 @@ interface PlanningItem {
   weight: number | null;
 }
 
-const DOCK_CAPACITY = 40; // pallets per day default
+const DOCK_CAPACITY = 40;
 
 export default function InboundPlanning() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -57,7 +57,7 @@ export default function InboundPlanning() {
 
     const { data: dispData } = await supabase
       .from('dispatches')
-      .select('id, display_id, grower_name, grower_code, expected_arrival, dispatch_date, total_pallets, status, carrier, con_note_number')
+      .select('id, display_id, grower_name, grower_code, expected_arrival, dispatch_date, total_pallets, status, carrier, delivery_advice_number')
       .eq('receiver_business_id', business.id)
       .gte('expected_arrival', start)
       .lte('expected_arrival', end)
@@ -65,7 +65,6 @@ export default function InboundPlanning() {
 
     if (dispData) {
       setDispatches(dispData as PlanningDispatch[]);
-      // Fetch items for all dispatches
       const ids = dispData.map(d => d.id);
       if (ids.length > 0) {
         const { data: itemData } = await supabase
@@ -94,12 +93,10 @@ export default function InboundPlanning() {
     return { pallets, totalUnits, growers, dispatches: dayDisps.length, issues };
   };
 
-  // Product breakdown for selected day
   const selectedDayDispatches = selectedDay ? getDispatchesForDay(selectedDay) : [];
   const selectedDayItemIds = new Set(selectedDayDispatches.map(d => d.id));
   const selectedDayItems = items.filter(i => selectedDayItemIds.has(i.dispatch_id));
 
-  // Group items by product + size
   const productBreakdown = useMemo(() => {
     const map = new Map<string, { product: string; size: string; variety: string; trayType: string; totalQty: number; totalWeight: number; unitWeight: number | null }>();
     selectedDayItems.forEach(item => {
@@ -124,7 +121,6 @@ export default function InboundPlanning() {
     return Array.from(map.values()).sort((a, b) => b.totalQty - a.totalQty);
   }, [selectedDayItems]);
 
-  // Grower breakdown for selected day
   const growerBreakdown = useMemo(() => {
     const map = new Map<string, { name: string; code: string; pallets: number; dispatches: number; items: number }>();
     selectedDayDispatches.forEach(d => {
@@ -148,7 +144,6 @@ export default function InboundPlanning() {
     return Array.from(map.values()).sort((a, b) => b.pallets - a.pallets);
   }, [selectedDayDispatches, items]);
 
-  // Weekly totals
   const weeklyStats = useMemo(() => {
     const totalPallets = dispatches.reduce((s, d) => s + d.total_pallets, 0);
     const totalUnits = items.reduce((s, i) => s + i.quantity, 0);
@@ -242,7 +237,6 @@ export default function InboundPlanning() {
                         {format(day, 'd MMM')}
                       </div>
 
-                      {/* Capacity bar */}
                       <div className="h-20 w-full bg-muted/50 rounded-md overflow-hidden flex flex-col-reverse relative mb-2">
                         <div
                           className={`transition-all rounded-md ${isOver ? 'bg-destructive/70' : capacity > 75 ? 'bg-warning/70' : 'bg-primary/40'}`}
@@ -359,33 +353,29 @@ export default function InboundPlanning() {
                   {selectedDayDispatches.length === 0 ? (
                     <p className="p-4 text-sm text-muted-foreground text-center">No arrivals expected.</p>
                   ) : (
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-muted/20">
-                          <th className="text-left p-2.5 text-xs font-display uppercase tracking-widest text-muted-foreground">ID</th>
-                          <th className="text-left p-2.5 text-xs font-display uppercase tracking-widest text-muted-foreground">Grower</th>
-                          <th className="text-left p-2.5 text-xs font-display uppercase tracking-widest text-muted-foreground">Con Note</th>
-                          <th className="text-left p-2.5 text-xs font-display uppercase tracking-widest text-muted-foreground">Carrier</th>
-                          <th className="text-right p-2.5 text-xs font-display uppercase tracking-widest text-muted-foreground">Pallets</th>
-                          <th className="text-left p-2.5 text-xs font-display uppercase tracking-widest text-muted-foreground">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedDayDispatches.map(d => (
-                          <tr key={d.id} className="border-t border-border hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => navigate(`/receive/${d.id}`)}>
-                            <td className="p-2.5 font-display text-xs">{d.display_id}</td>
-                            <td className="p-2.5">
-                              <div className="font-medium">{d.grower_name}</div>
-                              <div className="text-xs text-muted-foreground">{d.grower_code || '-'}</div>
-                            </td>
-                            <td className="p-2.5 font-display text-xs">{d.con_note_number}</td>
-                            <td className="p-2.5 text-muted-foreground">{d.carrier || '-'}</td>
-                            <td className="p-2.5 text-right font-display">{d.total_pallets}</td>
-                            <td className="p-2.5"><StatusBadge status={d.status as any} /></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <div className="divide-y divide-border">
+                      {selectedDayDispatches.map(d => (
+                        <button
+                          key={d.id}
+                          onClick={() => navigate(`/receive/${d.id}`)}
+                          className="w-full p-3 flex items-center justify-between hover:bg-muted/30 transition-colors text-left"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-display text-xs">{d.display_id}</span>
+                                <StatusBadge status={d.status as any} />
+                              </div>
+                              <div className="text-sm font-medium mt-0.5">{d.grower_name}</div>
+                              <div className="text-xs text-muted-foreground">{d.delivery_advice_number || '-'} · {d.carrier || 'No carrier'}</div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-display text-sm font-bold">{d.total_pallets}p</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
