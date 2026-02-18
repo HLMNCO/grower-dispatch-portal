@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Plus, Package, AlertTriangle, Clock, Truck, ArrowRight } from 'lucide-react';
+import { Plus, Package, Truck, ArrowRight, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useAuth } from '@/hooks/useAuth';
@@ -78,7 +78,7 @@ export default function SupplierHome() {
 
       {/* CTA */}
       <Link to="/dispatch/new">
-        <Button size="lg" className="w-full sm:w-auto font-display tracking-wide text-base min-h-[44px]">
+        <Button size="lg" className="w-full sm:w-auto font-display tracking-wide text-base min-h-[48px]">
           <Plus className="h-5 w-5 mr-2" /> New Delivery Advice
         </Button>
       </Link>
@@ -100,39 +100,67 @@ export default function SupplierHome() {
             </Link>
           </div>
         ) : (
-          <div className="rounded-lg border border-border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-muted/50">
-                    <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">DA Number</th>
-                    <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground hidden sm:table-cell">To</th>
-                    <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground hidden sm:table-cell">Departure</th>
-                    <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Status</th>
-                    <th className="p-3"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dispatches.map((d: any) => (
-                    <tr key={d.id} className="border-t border-border hover:bg-muted/30 cursor-pointer transition-colors"
-                      onClick={() => navigate(`/dispatch/${d.id}`)}>
-                      <td className="p-3">
-                        <span className="font-display text-xs">{d.delivery_advice_number || d.display_id}</span>
-                      </td>
-                      <td className="p-3 text-muted-foreground hidden sm:table-cell">Ten Farms</td>
-                      <td className="p-3 text-muted-foreground hidden sm:table-cell">{format(new Date(d.dispatch_date), 'dd MMM yyyy')}</td>
-                      <td className="p-3"><StatusBadge status={d.status} /></td>
-                      <td className="p-3 text-right">
-                        <Button variant="ghost" size="sm" className="font-display text-xs min-h-[44px]">
-                          View <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <>
+            {/* Mobile — card list */}
+            <div className="sm:hidden space-y-2">
+              {dispatches.map((d: any) => (
+                <button
+                  key={d.id}
+                  onClick={() => navigate(`/dispatch/${d.id}`)}
+                  className="w-full text-left p-4 rounded-lg border border-border bg-card hover:border-primary/30 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-xs font-mono text-muted-foreground">{d.delivery_advice_number || d.display_id}</span>
+                        <StatusBadge status={d.status} />
+                      </div>
+                      <p className="font-medium text-sm">Ten Farms</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Departing {format(new Date(d.dispatch_date), 'dd MMM yyyy')}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
+                  </div>
+                </button>
+              ))}
             </div>
-          </div>
+
+            {/* Desktop — table */}
+            <div className="hidden sm:block rounded-lg border border-border overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-muted/50">
+                      <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">DA Number</th>
+                      <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">To</th>
+                      <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Departure</th>
+                      <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Status</th>
+                      <th className="p-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dispatches.map((d: any) => (
+                      <tr key={d.id} className="border-t border-border hover:bg-muted/30 cursor-pointer transition-colors"
+                        onClick={() => navigate(`/dispatch/${d.id}`)}>
+                        <td className="p-3">
+                          <span className="font-display text-xs">{d.delivery_advice_number || d.display_id}</span>
+                        </td>
+                        <td className="p-3 text-muted-foreground">Ten Farms</td>
+                        <td className="p-3 text-muted-foreground">{format(new Date(d.dispatch_date), 'dd MMM yyyy')}</td>
+                        <td className="p-3"><StatusBadge status={d.status} /></td>
+                        <td className="p-3 text-right">
+                          <Button variant="ghost" size="sm" className="font-display text-xs min-h-[44px]">
+                            View <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
         )}
       </section>
     </div>
