@@ -40,7 +40,7 @@ export async function generateDeliveryAdvicePDF(dispatchId: string) {
   // Generate QR code as data URL
   const appUrl = window.location.origin;
   const qrUrl = `${appUrl}/dispatch/scan/${dispatch.qr_code_token}`;
-  const qrDataUrl = await QRCode.toDataURL(qrUrl, { width: 120, margin: 1 });
+  const qrDataUrl = await QRCode.toDataURL(qrUrl, { width: 256, margin: 1, color: { dark: '#22573c', light: '#f0f8f3' } });
 
   const da = dispatch.delivery_advice_number || daNumber;
 
@@ -69,9 +69,15 @@ export async function generateDeliveryAdvicePDF(dispatchId: string) {
   addText('DELIVERY ADVICE', margin, y + 14, { size: 12, bold: true, color: green });
   addText(da, margin, y + 22, { size: 14, bold: true });
 
-  // QR code
-  doc.addImage(qrDataUrl, 'PNG', pageW - margin - 30, y, 30, 30);
-  addText('Scan for live status', pageW - margin - 30, y + 34, { size: 7, color: mutedText });
+  // QR code — larger, with border box for easy scanning
+  const qrSize = 38;
+  const qrX = pageW - margin - qrSize;
+  doc.setFillColor(...lightGreen);
+  doc.setDrawColor(...green);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(qrX - 3, y - 2, qrSize + 6, qrSize + 10, 2, 2, 'FD');
+  doc.addImage(qrDataUrl, 'PNG', qrX, y, qrSize, qrSize);
+  addText('SCAN FOR LIVE STATUS', qrX - 2, y + qrSize + 5, { size: 6, bold: true, color: green });
 
   y += 42;
 
