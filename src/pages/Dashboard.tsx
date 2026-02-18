@@ -14,6 +14,7 @@ import ConnectionsPage from './ConnectionsPage';
 import ReceivingCalendar from '@/components/ReceivingCalendar';
 import SupplierIntakeLinkDialog from '@/components/SupplierIntakeLinkDialog';
 import StaffRequests from '@/components/StaffRequests';
+import { DashboardSkeleton } from '@/components/Skeletons';
 
 interface DispatchRow {
   id: string;
@@ -111,6 +112,74 @@ function DispatchCard({ dispatch, onClick }: { dispatch: DispatchRow; onClick: (
         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
       </div>
     </button>
+  );
+}
+
+
+interface BulkLotEntryProps {
+  dispatches: DispatchRow[];
+  onSaved: () => void;
+}
+
+function BulkLotEntry({ dispatches, onSaved }: BulkLotEntryProps) {
+  const [lots, setLots] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  const handleSaveAll = async () => {
+    const entries = Object.entries(lots).filter(([, v]) => v.trim());
+    if (entries.length === 0) return;
+    setSaving(true);
+    await Promise.all(
+      entries.map(([id, lot]) =>
+        supabase.from('dispatches').update({ internal_lot_number: lot.trim(), status: 'received' } as any).eq('id', id)
+      )
+    );
+    setSaving(false);
+    setLots({});
+    onSaved();
+    toast({ title: `${entries.length} lot number${entries.length !== 1 ? 's' : ''} saved` });
+  };
+
+  const filledCount = Object.values(lots).filter(v => v.trim()).length;
+
+  return (
+    <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 overflow-hidden">
+      <div className="px-4 py-3 border-b border-amber-500/20 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="font-display text-sm tracking-tight">Bulk Lot Entry</h3>
+          <p className="text-xs text-muted-foreground">{dispatches.length} dispatches awaiting lot numbers</p>
+        </div>
+        {filledCount > 0 && (
+          <Button size="sm" onClick={handleSaveAll} disabled={saving} className="font-display shrink-0">
+            {saving ? 'Saving...' : `Save ${filledCount} Lot${filledCount !== 1 ? 's' : ''}`}
+          </Button>
+        )}
+      </div>
+      <div className="divide-y divide-amber-500/10">
+        {dispatches.slice(0, 10).map(d => (
+          <div key={d.id} className="flex items-center gap-3 px-4 py-2.5">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{d.grower_name}</p>
+              <p className="text-xs text-muted-foreground">{d.display_id}</p>
+            </div>
+            <Input
+              className="w-40 h-8 text-sm font-display"
+              placeholder="LOT-XXXXXX"
+              value={lots[d.id] || ''}
+              onChange={e => setLots(prev => ({ ...prev, [d.id]: e.target.value }))}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleSaveAll();
+              }}
+            />
+          </div>
+        ))}
+        {dispatches.length > 10 && (
+          <p className="px-4 py-2 text-xs text-muted-foreground">
+            Showing first 10 — clear filter to see all
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -258,6 +327,11 @@ export default function Dashboard() {
               })}
             </div>
 
+            {/* Bulk Lot Entry — shown when "Awaiting Entry" filter is active */}
+            {statusFilter === 'received-pending-admin' && filtered.length > 0 && (
+              <BulkLotEntry dispatches={filtered} onSaved={fetchDispatches} />
+            )}
+
             {/* Search */}
             <div className="flex gap-2 sm:gap-3">
               <div className="relative flex-1">
@@ -273,7 +347,7 @@ export default function Dashboard() {
 
             {/* Content: Cards on mobile, Table on desktop */}
             {loading ? (
-              <div className="text-center py-12 text-muted-foreground">Loading dispatches...</div>
+              <DashboardSkeleton />
             ) : (
               <>
                 {/* Mobile cards */}
