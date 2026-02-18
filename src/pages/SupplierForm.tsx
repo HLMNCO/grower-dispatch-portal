@@ -384,7 +384,7 @@ export default function SupplierDispatchForm() {
                     </Button>
                   )}
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <Select value={item.product} onValueChange={v => updateItem(i, 'product', v)}>
                     <SelectTrigger><SelectValue placeholder="Product" /></SelectTrigger>
                     <SelectContent>{PRODUCE_CATEGORIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
@@ -400,20 +400,18 @@ export default function SupplierDispatchForm() {
                   </Select>
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Quantity *</Label>
-                    <Input type="number" placeholder="e.g. 60" min={0} value={item.quantity === 0 ? '' : item.quantity} onChange={e => updateItem(i, 'quantity', parseInt(e.target.value) || 0)} />
+                    <Input type="number" placeholder="e.g. 60" min={0} inputMode="numeric" value={item.quantity === 0 ? '' : item.quantity} onChange={e => updateItem(i, 'quantity', parseInt(e.target.value) || 0)} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Kg per Unit</Label>
-                    <Input type="number" placeholder="e.g. 15" min={0} step="0.1" value={item.weight === 0 ? '' : item.weight} onChange={e => updateItem(i, 'weight', parseFloat(e.target.value) || 0)} />
+                    <Input type="number" placeholder="e.g. 15" min={0} step="0.1" inputMode="decimal" value={item.weight === 0 ? '' : item.weight} onChange={e => updateItem(i, 'weight', parseFloat(e.target.value) || 0)} />
                   </div>
-                  {item.quantity > 0 && item.weight && item.weight > 0 && (
-                    <div className="flex items-end pb-2">
-                      <span className="text-xs text-muted-foreground">
-                        = <strong className="text-foreground font-display">{(item.quantity * item.weight).toLocaleString()}kg</strong> total
-                      </span>
-                    </div>
-                  )}
                 </div>
+                {item.quantity > 0 && item.weight && item.weight > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    = <strong className="text-foreground font-display">{(item.quantity * item.weight).toLocaleString()}kg</strong> total
+                  </p>
+                )}
               </div>
             ))}
           </div>
@@ -500,13 +498,13 @@ export default function SupplierDispatchForm() {
                     type="button"
                     onClick={() => setTemperatureZone(tz.value)}
                     className={cn(
-                      "p-4 rounded-lg border text-center transition-all min-h-[44px]",
+                      "p-3 sm:p-4 rounded-lg border text-center transition-all min-h-[44px]",
                       selected ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:border-primary/30'
                     )}
                   >
-                    <Icon className={cn("h-6 w-6 mx-auto mb-1.5", selected ? 'text-primary' : 'text-muted-foreground')} />
-                    <p className="font-display text-sm font-bold">{tz.label}</p>
-                    <p className="text-xs text-muted-foreground">{tz.desc}</p>
+                    <Icon className={cn("h-5 w-5 sm:h-6 sm:w-6 mx-auto mb-1 sm:mb-1.5", selected ? 'text-primary' : 'text-muted-foreground')} />
+                    <p className="font-display text-xs sm:text-sm font-bold leading-tight">{tz.label}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight mt-0.5 hidden sm:block">{tz.desc}</p>
                   </button>
                 );
               })}
