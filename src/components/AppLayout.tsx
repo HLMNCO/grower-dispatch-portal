@@ -5,8 +5,9 @@ import { toast as sonnerToast } from 'sonner';
 import {
   Package, Plus, ClipboardList, FileText, Settings, LogOut,
   LayoutDashboard, CheckCircle2, CalendarDays, Users, Menu, X,
-  BarChart3, ClipboardCheck, Home
+  BarChart3, ClipboardCheck, Home, Moon, Sun
 } from 'lucide-react';
+import { useDarkMode } from '@/hooks/useDarkMode';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import SupplierIntakeLinkDialog from '@/components/SupplierIntakeLinkDialog';
@@ -112,6 +113,7 @@ function ReceiverSidebar({ onClose }: { onClose?: () => void }) {
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 w-full min-h-[44px]">
           <LogOut className="h-4 w-4" /> Sign Out
         </button>
+        <DarkModeToggle />
       </div>
     </div>
   );
@@ -175,6 +177,19 @@ function MobileBottomNav() {
   );
 }
 
+function DarkModeToggle() {
+  const { isDark, toggle } = useDarkMode();
+  return (
+    <button
+      onClick={toggle}
+      className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+      aria-label="Toggle dark mode"
+    >
+      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </button>
+  );
+}
+
 export function AppLayout({ children }: { children: ReactNode }) {
   const { role } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -210,12 +225,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} className="shrink-0 -ml-2">
             <Menu className="h-5 w-5" />
           </Button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1">
             <div className="p-1.5 rounded-lg bg-primary">
               <Package className="h-3.5 w-3.5 text-primary-foreground" />
             </div>
             <span className="font-display text-sm tracking-tight">FRESHDOCK</span>
           </div>
+          <DarkModeToggle />
         </header>
 
         {/* Page content — extra bottom padding for mobile nav bar */}
