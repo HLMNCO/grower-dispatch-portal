@@ -37,7 +37,7 @@ interface DispatchRow {
 const statCards = [
   { label: 'Inbound', icon: Truck, filterStatus: 'pending' },
   { label: 'Awaiting Entry', icon: FileText, filterStatus: 'received-pending-admin' },
-  { label: 'Received with Issues', icon: AlertTriangle, filterStatus: 'issue' },
+  { label: 'Issues', icon: AlertTriangle, filterStatus: 'issue' },
   { label: 'Completed', icon: CheckCircle2, filterStatus: 'received' },
 ];
 
@@ -59,27 +59,20 @@ function TomorrowSummary({ dispatches }: { dispatches: DispatchRow[] }) {
 
   return (
     <div className="rounded-lg border border-primary/30 bg-primary/5 overflow-hidden">
-      <div className="px-4 py-3 flex items-center gap-2 border-b border-primary/20">
+      <div className="px-3 py-2 sm:px-4 sm:py-3 flex items-center gap-2 border-b border-primary/20">
         <Bell className="h-4 w-4 text-primary shrink-0" />
         <div className="flex-1 min-w-0">
-          <h3 className="font-display tracking-tight text-sm">Tomorrow's Arrivals — {format(tomorrow, 'EEEE, d MMM')}</h3>
-          <p className="text-xs text-muted-foreground">
-            {tomorrowArrivals.length} dispatch{tomorrowArrivals.length !== 1 ? 'es' : ''} · {totalPallets} pallet{totalPallets !== 1 ? 's' : ''} expected
+          <h3 className="font-display tracking-tight text-xs sm:text-sm">Tomorrow — {format(tomorrow, 'EEE, d MMM')}</h3>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">
+            {tomorrowArrivals.length} dispatch{tomorrowArrivals.length !== 1 ? 'es' : ''} · {totalPallets} plt
           </p>
         </div>
       </div>
       <div className="divide-y divide-border">
         {tomorrowArrivals.map(d => (
-          <div key={d.id} className="grid grid-cols-[1fr_60px_100px] sm:grid-cols-[1fr_80px_140px] items-center px-4 py-2.5 text-sm">
-            <span className="font-medium text-foreground truncate pr-2">{d.grower_name}</span>
-            <span className="text-muted-foreground tabular-nums text-right">{d.total_pallets} plt</span>
-            <span className="flex items-center justify-end gap-1.5 text-muted-foreground text-xs truncate">
-              {d.carrier ? (
-                <><Truck className="h-3 w-3 shrink-0" /><span className="truncate">{d.carrier}</span></>
-              ) : (
-                <span className="text-muted-foreground/50">—</span>
-              )}
-            </span>
+          <div key={d.id} className="flex items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm">
+            <span className="font-medium text-foreground truncate min-w-0 flex-1">{d.grower_name}</span>
+            <span className="text-muted-foreground tabular-nums whitespace-nowrap shrink-0">{d.total_pallets} plt</span>
           </div>
         ))}
       </div>
@@ -172,10 +165,11 @@ export default function Dashboard() {
   }, {} as Record<string, number>);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Header — responsive: stacks actions on mobile */}
-      <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="container py-3 sm:py-4">
+      {/* Header — hidden on mobile (AppLayout handles it), visible on desktop */}
+      <header className="hidden lg:block border-b border-border bg-card sticky top-0 z-10">
+        <div className="container py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary">
@@ -183,12 +177,10 @@ export default function Dashboard() {
               </div>
               <div>
                 <h1 className="text-lg font-display tracking-tight leading-tight">FRESHDOCK</h1>
-                <p className="text-xs text-muted-foreground truncate max-w-[140px] sm:max-w-none">{business?.name || 'Loading...'}</p>
+                <p className="text-xs text-muted-foreground">{business?.name || 'Loading...'}</p>
               </div>
             </div>
-
-            {/* Desktop actions */}
-            <div className="hidden sm:flex gap-2 items-center">
+            <div className="flex gap-2 items-center">
               {isSupplier && (
                 <>
                   <Link to="/dispatch/new">
@@ -224,50 +216,6 @@ export default function Dashboard() {
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
-
-            {/* Mobile: just logout */}
-            <div className="flex sm:hidden items-center gap-1">
-              <Button variant="ghost" size="sm" onClick={signOut}>
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Mobile action bar — scrollable row */}
-          <div className="flex sm:hidden gap-2 mt-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
-            {isSupplier && (
-              <>
-                <Link to="/dispatch/new" className="shrink-0">
-                  <Button size="sm" className="font-display tracking-wide text-xs h-8">
-                    <Plus className="h-3.5 w-3.5 mr-1" /> New
-                  </Button>
-                </Link>
-                <Link to="/supplier/templates" className="shrink-0">
-                  <Button size="sm" variant="outline" className="font-display tracking-wide text-xs h-8">
-                    <FileText className="h-3.5 w-3.5 mr-1" /> Templates
-                  </Button>
-                </Link>
-              </>
-            )}
-            {isReceiver && (
-              <>
-                {business?.public_intake_token && (
-                  <div className="shrink-0">
-                    <SupplierIntakeLinkDialog intakeToken={business.public_intake_token} />
-                  </div>
-                )}
-                <Link to="/receiver/verify" className="shrink-0">
-                  <Button size="sm" variant="outline" className="font-display tracking-wide text-xs h-8">
-                    <ClipboardCheck className="h-3.5 w-3.5 mr-1" /> Receive
-                  </Button>
-                </Link>
-                <Link to="/planning" className="shrink-0">
-                  <Button size="sm" variant="outline" className="font-display tracking-wide text-xs h-8">
-                    <BarChart3 className="h-3.5 w-3.5 mr-1" /> Planning
-                  </Button>
-                </Link>
-              </>
-            )}
           </div>
         </div>
       </header>
@@ -297,10 +245,10 @@ export default function Dashboard() {
                 const isActive = statusFilter === card.filterStatus;
                 return (
                   <button key={card.filterStatus} onClick={() => setStatusFilter(isActive ? 'all' : card.filterStatus)}
-                    className={`p-3 sm:p-4 rounded-lg border text-left transition-all ${isActive ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border bg-card hover:border-primary/30'}`}>
-                    <card.icon className={`h-4 w-4 mb-1.5 sm:mb-2 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-                    <p className="text-xl sm:text-2xl font-display">{count}</p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider leading-tight">{card.label}</p>
+                    className={`flex items-center gap-2 p-2.5 sm:p-4 rounded-lg border text-left transition-all sm:block overflow-hidden ${isActive ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border bg-card hover:border-primary/30'}`}>
+                    <card.icon className={`h-4 w-4 shrink-0 sm:mb-2 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <p className="text-lg sm:text-2xl font-display leading-none shrink-0">{count}</p>
+                    <p className="text-[9px] sm:text-xs text-muted-foreground uppercase tracking-wide leading-tight truncate min-w-0">{card.label}</p>
                   </button>
                 );
               })}
