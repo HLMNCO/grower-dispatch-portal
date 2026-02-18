@@ -187,7 +187,7 @@ export default function PublicSubmitPage() {
   };
 
   const tempZones = [
-    { value: 'ambient', icon: Thermometer, label: 'Ambient', desc: 'No refrigeration required' },
+    { value: 'ambient', icon: Thermometer, label: 'Ambient', desc: '12°C – 14°C (conventional)' },
     { value: 'chilled', icon: Snowflake, label: 'Chilled', desc: '2°C – 8°C' },
     { value: 'frozen', icon: IceCreamCone, label: 'Frozen', desc: 'Below 0°C' },
   ];

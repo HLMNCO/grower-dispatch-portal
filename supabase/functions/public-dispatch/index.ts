@@ -246,7 +246,10 @@ Deno.serve(async (req) => {
       console.error('Items insert error:', itemsError)
     }
 
-    // Log event
+    // Generate DA number
+    const { data: daNumber } = await supabase.rpc('generate_delivery_advice_number', { p_dispatch_id: dispatch.id })
+
+    // Log events
     await supabase.from('dispatch_events').insert({
       dispatch_id: dispatch.id,
       event_type: 'created',
@@ -257,6 +260,13 @@ Deno.serve(async (req) => {
         grower_email: grower_email?.trim() || null,
         grower_phone: grower_phone?.trim() || null,
       },
+    })
+
+    await supabase.from('dispatch_events').insert({
+      dispatch_id: dispatch.id,
+      event_type: 'submitted',
+      triggered_by_role: 'external_supplier',
+      metadata: { source: 'public_intake' },
     })
 
     // Send emails (non-blocking — don't fail the response if emails fail)
@@ -321,7 +331,8 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         dispatch_id: dispatch.display_id,
-        message: `Dispatch ${dispatch.display_id} submitted successfully to ${receiverBiz.name}`,
+        da_number: daNumber || dispatch.display_id,
+        message: `Dispatch ${daNumber || dispatch.display_id} submitted successfully to ${receiverBiz.name}`,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
