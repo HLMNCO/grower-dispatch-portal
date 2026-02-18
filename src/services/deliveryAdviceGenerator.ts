@@ -181,7 +181,11 @@ export async function generateDeliveryAdvicePDF(dispatchId: string) {
 
   let cx = margin;
   cols.forEach(col => {
-    addText(col.label, cx + 1, y + 3, { size: 7, bold: true, color: [255, 255, 255] });
+    const tx = col.align === 'right' ? cx + col.w - 1 : cx + 1;
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text(col.label, tx, y + 3, { align: col.align === 'right' ? 'right' : 'left' });
     cx += col.w;
   });
   y += 7;
@@ -212,8 +216,13 @@ export async function generateDeliveryAdvicePDF(dispatchId: string) {
 
     cx = margin;
     rowData.forEach((val, ci) => {
-      addText(val, cx + 1, y, { size: 8 });
-      cx += cols[ci].w;
+      const col = cols[ci];
+      const tx = col.align === 'right' ? cx + col.w - 1 : cx + 1;
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...darkText);
+      doc.text(val, tx, y, { align: col.align === 'right' ? 'right' : 'left' });
+      cx += col.w;
     });
     y += 6;
   });
@@ -226,8 +235,14 @@ export async function generateDeliveryAdvicePDF(dispatchId: string) {
   addText('TOTAL', margin + 1, y + 1, { size: 8, bold: true });
   let totX = margin;
   cols.forEach((col, i) => {
-    if (i === 5) addText(String(totalCtns), totX + 1, y + 1, { size: 8, bold: true });
-    if (i === 7) addText(totalWt.toLocaleString(), totX + 1, y + 1, { size: 8, bold: true });
+    if (i === 5) {
+      doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkText);
+      doc.text(String(totalCtns), totX + col.w - 1, y + 1, { align: 'right' });
+    }
+    if (i === 7) {
+      doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...darkText);
+      doc.text(totalWt.toLocaleString(), totX + col.w - 1, y + 1, { align: 'right' });
+    }
     totX += col.w;
   });
   y += 12;
