@@ -6,6 +6,7 @@ interface Business {
   id: string;
   name: string;
   business_type: 'receiver' | 'supplier' | 'transporter';
+  public_intake_token: string | null;
 }
 
 interface AuthContextType {
@@ -78,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchBusiness = async (userId: string) => {
     const { data } = await supabase
       .from('businesses')
-      .select('id, name, business_type')
+      .select('id, name, business_type, public_intake_token')
       .eq('owner_id', userId)
       .maybeSingle();
     if (data) {
