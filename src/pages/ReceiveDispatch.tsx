@@ -13,6 +13,7 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { PhotoUpload } from '@/components/PhotoUpload';
+import { NoIssuesEmpty } from '@/components/EmptyStates';
 import { DispatchTimeline } from '@/components/DispatchTimeline';
 import { generateDeliveryAdvicePDF } from '@/services/deliveryAdviceGenerator';
 import { Switch } from '@/components/ui/switch';
@@ -824,7 +825,7 @@ export default function ReceiveDispatch() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground p-4 border border-dashed border-border rounded-lg text-center">No issues flagged.</p>
+            <NoIssuesEmpty />
           )}
         </section>
 
