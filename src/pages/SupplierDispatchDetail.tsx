@@ -1,10 +1,11 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { ArrowLeft, FileText, Pencil, Package, Thermometer, Snowflake, IceCreamCone, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, FileText, Pencil, Package, Thermometer, Snowflake, IceCreamCone, AlertTriangle, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
 import { DispatchTimeline } from '@/components/DispatchTimeline';
 import { BrandedLoading } from '@/components/BrandedLoading';
+import { DispatchDetailSkeleton } from '@/components/Skeletons';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
@@ -29,6 +30,7 @@ function TempBadge({ zone }: { zone: string | null }) {
 
 export default function SupplierDispatchDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
 
   const { data: dispatch, isLoading } = useQuery({
@@ -101,7 +103,7 @@ export default function SupplierDispatchDetail() {
     }
   };
 
-  if (isLoading) return <BrandedLoading />;
+  if (isLoading) return <DispatchDetailSkeleton />;
   if (!dispatch) return (
     <div className="flex items-center justify-center py-20">
       <div className="text-center space-y-3">
@@ -130,8 +132,25 @@ export default function SupplierDispatchDetail() {
             </h1>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={dispatch.status} />
+          <Button
+            onClick={() => {
+              const params = new URLSearchParams();
+              // Encode key fields as query params to pre-fill the new form
+              if (dispatch.receiver_business_id) params.set('receiver', dispatch.receiver_business_id);
+              if (dispatch.carrier) params.set('carrier', dispatch.carrier);
+              if (dispatch.temperature_zone) params.set('temp', dispatch.temperature_zone);
+              if (dispatch.commodity_class) params.set('class', dispatch.commodity_class);
+              if (dispatch.total_pallets) params.set('pallets', String(dispatch.total_pallets));
+              navigate(`/dispatch/new?repeat=${dispatch.id}&${params.toString()}`);
+            }}
+            size="sm"
+            variant="outline"
+            className="font-display min-h-[44px]"
+          >
+            <RefreshCcw className="h-4 w-4 mr-2" /> Repeat
+          </Button>
           <Button onClick={handleGeneratePDF} size="sm" className="font-display min-h-[44px]">
             <FileText className="h-4 w-4 mr-2" /> Generate DA PDF
           </Button>
