@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, isToday, isTomorrow, isPast, addDays } from 'date-fns';
-import { Package, Truck, Search, ChevronRight } from 'lucide-react';
+import { Truck, Search, ChevronRight } from 'lucide-react';
+import { ReceiveQueueSkeleton } from '@/components/Skeletons';
+import { NoQueueEmpty, NoSearchResultsEmpty } from '@/components/EmptyStates';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/StatusBadge';
 import { supabase } from '@/integrations/supabase/client';
@@ -104,14 +106,9 @@ export default function ReceiverVerifyPage() {
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">Loading queue...</div>
+          <ReceiveQueueSkeleton />
         ) : filtered.length === 0 ? (
-          <div className="py-12 text-center space-y-2">
-            <Package className="h-10 w-10 text-muted-foreground mx-auto" />
-            <p className="font-display text-sm text-muted-foreground">
-              {dispatches.length === 0 ? 'No inbound deliveries right now' : 'No deliveries match your search'}
-            </p>
-          </div>
+          dispatches.length === 0 ? <NoQueueEmpty /> : <NoSearchResultsEmpty />
         ) : (
           groups.map(group => (
             <div key={group.label} className="space-y-2">
