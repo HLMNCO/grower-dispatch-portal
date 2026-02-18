@@ -15,6 +15,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   role: 'staff' | 'supplier' | 'transporter' | null;
+  roleLoaded: boolean;
   business: Business | null;
   signOut: () => Promise<void>;
   refreshBusiness: () => Promise<void>;
@@ -25,6 +26,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   loading: true,
   role: null,
+  roleLoaded: false,
   business: null,
   signOut: async () => {},
   refreshBusiness: async () => {},
@@ -36,7 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [role, setRole] = useState<'staff' | 'supplier' | 'transporter' | null>(null);
+const [role, setRole] = useState<'staff' | 'supplier' | 'transporter' | null>(null);
+  const [roleLoaded, setRoleLoaded] = useState(false);
   const [business, setBusiness] = useState<Business | null>(null);
 
   useEffect(() => {
@@ -44,25 +47,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
+        setRoleLoaded(false);
         setTimeout(() => {
           fetchRole(session.user.id);
           fetchBusiness(session.user.id);
         }, 0);
       } else {
         setRole(null);
+        setRoleLoaded(false);
         setBusiness(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
+        setRoleLoaded(false);
         fetchRole(session.user.id);
         fetchBusiness(session.user.id);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -75,6 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('user_id', userId)
       .maybeSingle();
     setRole((data?.role as 'staff' | 'supplier' | 'transporter') ?? null);
+    setRoleLoaded(true);
+    setLoading(false);
   };
 
   const fetchBusiness = async (userId: string) => {
@@ -97,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, role, business, signOut, refreshBusiness }}>
+    <AuthContext.Provider value={{ user, session, loading, role, roleLoaded, business, signOut, refreshBusiness }}>
       {children}
     </AuthContext.Provider>
   );

@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { BrandedLoading } from "@/components/BrandedLoading";
+import { toast } from "sonner";
+import { useEffect } from "react";
 import Dashboard from "./pages/Dashboard";
 import SupplierForm from "./pages/SupplierForm";
 import SupplierHome from "./pages/SupplierHome";
@@ -39,11 +41,18 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
 
 /** Redirects to the correct home based on user role */
 function RoleBasedHome() {
-  const { role, loading } = useAuth();
-  if (loading) return <BrandedLoading />;
+  const { role, roleLoaded, loading } = useAuth();
+
+  useEffect(() => {
+    if (roleLoaded && !role) {
+      toast.error("Your account role isn't set up yet. Contact Ten Farms to get access.");
+    }
+  }, [roleLoaded, role]);
+
+  if (loading || !roleLoaded) return <BrandedLoading />;
+  if (!role) return <Navigate to="/auth" replace />;
   if (role === 'supplier') return <Navigate to="/dispatch" replace />;
   if (role === 'transporter') return <Navigate to="/transporter" replace />;
-  // staff / receiver is the default
   return <Dashboard />;
 }
 
