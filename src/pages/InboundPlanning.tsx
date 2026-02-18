@@ -215,7 +215,8 @@ export default function InboundPlanning() {
               <div className="p-3 border-b border-border bg-muted/30">
                 <h3 className="font-display text-xs uppercase tracking-widest text-muted-foreground">Daily Pallet Forecast</h3>
               </div>
-              <div className="grid grid-cols-7 divide-x divide-border">
+              <div className="overflow-x-auto">
+              <div className="grid grid-cols-7 divide-x divide-border min-w-[480px]">
                 {days.map(day => {
                   const stats = getDayStats(day);
                   const capacity = Math.min((stats.pallets / DOCK_CAPACITY) * 100, 100);
@@ -260,16 +261,17 @@ export default function InboundPlanning() {
                   );
                 })}
               </div>
+              </div>
             </div>
 
             {/* Selected Day Detail */}
             {selectedDay && selectedStats && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <h3 className="font-display text-base tracking-tight">
                     {format(selectedDay, 'EEEE, d MMMM')}
                   </h3>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
                     <span className="font-display">{selectedStats.pallets} pallets</span>
                     <span>{selectedStats.totalUnits.toLocaleString()} units</span>
                     <span>{selectedStats.dispatches} dispatches</span>
@@ -285,7 +287,7 @@ export default function InboundPlanning() {
                     {productBreakdown.length === 0 ? (
                       <p className="p-4 text-sm text-muted-foreground text-center">No items for this day.</p>
                     ) : (
-                      <table className="w-full text-sm">
+                      <div className="overflow-x-auto"><table className="w-full text-sm">
                         <thead>
                           <tr className="bg-muted/20">
                             <th className="text-left p-2.5 text-xs font-display uppercase tracking-widest text-muted-foreground">Product</th>
@@ -315,7 +317,7 @@ export default function InboundPlanning() {
                             <td className="p-2.5 text-right font-display text-muted-foreground">{productBreakdown.reduce((s, r) => s + r.totalWeight, 0).toLocaleString()}</td>
                           </tr>
                         </tbody>
-                      </table>
+                      </table></div>
                     )}
                   </div>
 
