@@ -165,7 +165,7 @@ export default function QRScanPage() {
     return (
       <div className="min-h-screen bg-background">
         <div className="bg-primary py-4 px-6">
-          <h1 className="text-primary-foreground font-display text-lg tracking-tight">FRESHDOCK</h1>
+          <h1 className="text-primary-foreground font-display font-bold text-lg tracking-tight">Pack to Produce</h1>
         </div>
         <div className="max-w-2xl mx-auto px-4 py-12 text-center">
           <QrCode className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -185,7 +185,7 @@ export default function QRScanPage() {
     <div className="min-h-screen bg-background">
       {/* Green header bar */}
       <div className="bg-primary py-4 px-6">
-        <h1 className="text-primary-foreground font-display text-lg tracking-tight">FRESHDOCK</h1>
+        <h1 className="text-primary-foreground font-display font-bold text-lg tracking-tight">Pack to Produce</h1>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6 space-y-6">

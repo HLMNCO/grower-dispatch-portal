@@ -51,7 +51,7 @@ export default function TransporterDashboard() {
                 <Truck className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-lg font-display tracking-tight leading-tight">FRESHDOCK</h1>
+                <h1 className="text-lg font-display font-bold tracking-tight leading-tight">Pack to Produce</h1>
                 <p className="text-xs text-muted-foreground">{business?.name}</p>
               </div>
             </div>

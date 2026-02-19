@@ -4,11 +4,9 @@ import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 
 export async function generateDeliveryAdvicePDF(dispatchId: string) {
-  // First generate the DA number via the DB function
   const { data: daNumber, error: daError } = await supabase.rpc('generate_delivery_advice_number', { p_dispatch_id: dispatchId });
   if (daError) throw new Error(daError.message);
 
-  // Fetch full dispatch data
   const { data: dispatch, error: dispError } = await supabase
     .from('dispatches')
     .select('*')
@@ -16,114 +14,143 @@ export async function generateDeliveryAdvicePDF(dispatchId: string) {
     .single();
   if (dispError || !dispatch) throw new Error('Dispatch not found');
 
-  // Fetch items
   const { data: items } = await supabase
     .from('dispatch_items')
     .select('*')
     .eq('dispatch_id', dispatchId)
     .order('created_at');
 
-  // Fetch supplier business
   let supplierBiz: any = null;
   if (dispatch.supplier_business_id) {
     const { data } = await supabase.from('businesses').select('*').eq('id', dispatch.supplier_business_id).single();
     supplierBiz = data;
   }
 
-  // Fetch receiver business
   let receiverBiz: any = null;
   if (dispatch.receiver_business_id) {
     const { data } = await supabase.from('businesses').select('*').eq('id', dispatch.receiver_business_id).single();
     receiverBiz = data;
   }
 
-  // Generate QR code as data URL
+  // QR code — leaf green on pale green background
   const appUrl = window.location.origin;
   const qrUrl = `${appUrl}/dispatch/scan/${dispatch.qr_code_token}`;
-  const qrDataUrl = await QRCode.toDataURL(qrUrl, { width: 256, margin: 1, color: { dark: '#22573c', light: '#f0f8f3' } });
+  const qrDataUrl = await QRCode.toDataURL(qrUrl, {
+    width: 256,
+    margin: 1,
+    color: { dark: '#2a6b3a', light: '#f0faf3' },
+  });
 
   const da = dispatch.delivery_advice_number || daNumber;
 
-  // Create PDF
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageW = 210;
   const margin = 15;
   const contentW = pageW - margin * 2;
   let y = margin;
 
-  const green = [34, 87, 60] as [number, number, number]; // primary green
-  const lightGreen = [240, 248, 243] as [number, number, number];
-  const darkText = [30, 45, 35] as [number, number, number];
-  const mutedText = [100, 115, 105] as [number, number, number];
+  // Pack to Produce brand colours
+  const leafGreen   = [42, 107, 58]   as [number, number, number]; // #2a6b3a deep green
+  const leafMid     = [58, 140, 78]   as [number, number, number]; // #3a8c4e mid green
+  const paleGreen   = [232, 245, 236] as [number, number, number]; // light bg
+  const sunGold     = [224, 168, 32]  as [number, number, number]; // #e0a820
+  const darkText    = [26, 46, 29]    as [number, number, number]; // #1a2e1d
+  const mutedText   = [107, 128, 112] as [number, number, number]; // #6b8070
+  const white       = [255, 255, 255] as [number, number, number];
 
-  // Helper to add text
-  const addText = (text: string, x: number, ty: number, opts?: { size?: number; bold?: boolean; color?: number[]; font?: string }) => {
+  const addText = (text: string, x: number, ty: number, opts?: {
+    size?: number; bold?: boolean; italic?: boolean; color?: number[];
+  }) => {
     doc.setFontSize(opts?.size || 10);
-    doc.setFont(opts?.font || 'helvetica', opts?.bold ? 'bold' : 'normal');
+    doc.setFont('helvetica', opts?.bold ? 'bold' : opts?.italic ? 'italic' : 'normal');
     doc.setTextColor(...((opts?.color || darkText) as [number, number, number]));
     doc.text(text, x, ty);
   };
 
   // ── HEADER ──
-  addText('FreshDock', margin, y + 6, { size: 22, bold: true, color: green });
-  addText('DELIVERY ADVICE', margin, y + 14, { size: 12, bold: true, color: green });
-  addText(da, margin, y + 22, { size: 14, bold: true });
+  // Green header band
+  doc.setFillColor(...leafGreen);
+  doc.rect(0, 0, pageW, 38, 'F');
 
-  // QR code — larger, with border box for easy scanning
-  const qrSize = 38;
+  // Wordmark: "Pack to Produce"
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(...white);
+  doc.text('Pack', margin, y + 8);
+
+  // measure "Pack" width to position "to"
+  const packW = doc.getTextWidth('Pack');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(245, 200, 66); // sun yellow
+  doc.text('to', margin + packW + 2, y + 8);
+
+  const toW = doc.getTextWidth('to') + 4;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(245, 200, 66);
+  doc.text('Produce', margin + packW + toW + 1, y + 8);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text('DELIVERY ADVICE', margin, y + 16);
+
+  // DA number — white pill top-right
+  addText(da, pageW - margin, y + 10, { size: 13, bold: true, color: white });
+  doc.setFontSize(7);
+  doc.setTextColor(200, 230, 210);
+  doc.text('Delivery Advice No.', pageW - margin, y + 4, { align: 'right' });
+
+  // QR code box — sits partially overlapping header
+  const qrSize = 36;
   const qrX = pageW - margin - qrSize;
-  doc.setFillColor(...lightGreen);
-  doc.setDrawColor(...green);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(qrX - 3, y - 2, qrSize + 6, qrSize + 10, 2, 2, 'FD');
-  doc.addImage(qrDataUrl, 'PNG', qrX, y, qrSize, qrSize);
-  addText('SCAN FOR LIVE STATUS', qrX - 2, y + qrSize + 5, { size: 6, bold: true, color: green });
+  const qrY = 6;
+  doc.setFillColor(...white);
+  doc.roundedRect(qrX - 3, qrY - 1, qrSize + 6, qrSize + 8, 2, 2, 'F');
+  doc.addImage(qrDataUrl, 'PNG', qrX, qrY + 1, qrSize, qrSize);
+  doc.setFontSize(5.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...leafMid);
+  doc.text('SCAN FOR LIVE STATUS', qrX + qrSize / 2, qrY + qrSize + 5, { align: 'center' });
 
-  y += 42;
-
-  // Separator
-  doc.setDrawColor(...green);
-  doc.setLineWidth(0.5);
-  doc.line(margin, y, pageW - margin, y);
-  y += 8;
+  y = 46;
 
   // ── PARTIES ──
   const colW = contentW / 3;
 
-  addText('FROM (GROWER)', margin, y, { size: 8, bold: true, color: green });
+  addText('FROM (GROWER)', margin, y, { size: 8, bold: true, color: leafGreen });
   y += 5;
   addText(dispatch.grower_name, margin, y, { size: 10, bold: true });
   y += 5;
   if (dispatch.grower_code) { addText(`Code: ${dispatch.grower_code}`, margin, y, { size: 8, color: mutedText }); y += 4; }
-  if (supplierBiz?.address) { addText(supplierBiz.address, margin, y, { size: 8, color: mutedText }); y += 4; }
   if (supplierBiz?.phone) { addText(supplierBiz.phone, margin, y, { size: 8, color: mutedText }); y += 4; }
   if (supplierBiz?.email) { addText(supplierBiz.email, margin, y, { size: 8, color: mutedText }); y += 4; }
 
-  // Reset y for second column
   let partyY = y;
-  y -= (supplierBiz ? 17 : 9);
+  const partyStartY = 52;
 
-  addText('TO (RECEIVER)', margin + colW, y - 5, { size: 8, bold: true, color: green });
-  addText(receiverBiz?.name || 'Not specified', margin + colW, y, { size: 10, bold: true });
-  if (receiverBiz?.city) { addText(receiverBiz.city, margin + colW, y + 5, { size: 8, color: mutedText }); }
-  if (receiverBiz?.phone) { addText(receiverBiz.phone, margin + colW, y + 9, { size: 8, color: mutedText }); }
+  addText('TO (RECEIVER)', margin + colW, partyStartY, { size: 8, bold: true, color: leafGreen });
+  addText(receiverBiz?.name || 'Not specified', margin + colW, partyStartY + 5, { size: 10, bold: true });
+  if (receiverBiz?.city) addText(receiverBiz.city, margin + colW, partyStartY + 10, { size: 8, color: mutedText });
+  if (receiverBiz?.phone) addText(receiverBiz.phone, margin + colW, partyStartY + 14, { size: 8, color: mutedText });
 
-  addText('TRANSPORT', margin + colW * 2, y - 5, { size: 8, bold: true, color: green });
-  addText(dispatch.carrier || 'Not specified', margin + colW * 2, y, { size: 10, bold: true });
-  if (dispatch.truck_number) { addText(`Rego: ${dispatch.truck_number}`, margin + colW * 2, y + 5, { size: 8, color: mutedText }); }
+  addText('TRANSPORT', margin + colW * 2, partyStartY, { size: 8, bold: true, color: leafGreen });
+  addText(dispatch.carrier || 'Not specified', margin + colW * 2, partyStartY + 5, { size: 10, bold: true });
+  if (dispatch.truck_number) addText(`Rego: ${dispatch.truck_number}`, margin + colW * 2, partyStartY + 10, { size: 8, color: mutedText });
   const conNoteText = dispatch.transporter_con_note_number || 'To be completed by carrier';
-  addText(`Con Note #: ${conNoteText}`, margin + colW * 2, y + 9, { size: 8, color: mutedText });
+  addText(`Con Note: ${conNoteText}`, margin + colW * 2, partyStartY + 14, { size: 8, color: mutedText });
 
-  y = Math.max(partyY, y + 18);
+  y = Math.max(partyY, partyStartY + 22);
 
-  // Separator
-  doc.setDrawColor(200, 210, 200);
-  doc.setLineWidth(0.3);
+  // Divider
+  doc.setDrawColor(...leafMid);
+  doc.setLineWidth(0.4);
   doc.line(margin, y, pageW - margin, y);
-  y += 8;
+  y += 7;
 
   // ── DELIVERY DETAILS ──
-  addText('DELIVERY DETAILS', margin, y, { size: 8, bold: true, color: green });
+  addText('DELIVERY DETAILS', margin, y, { size: 8, bold: true, color: leafGreen });
   y += 6;
 
   const detailPairs = [
@@ -145,32 +172,31 @@ export async function generateDeliveryAdvicePDF(dispatchId: string) {
     y += 5;
   });
 
-  // Carrier Con Note box on the right
+  // Carrier con note box
   const boxX = margin + contentW / 2 + 5;
   const boxY = y - 45;
   const boxW = contentW / 2 - 5;
   const boxH = 35;
-  doc.setFillColor(...lightGreen);
-  doc.roundedRect(boxX, boxY, boxW, boxH, 2, 2, 'F');
-  doc.setDrawColor(200, 220, 200);
-  doc.roundedRect(boxX, boxY, boxW, boxH, 2, 2, 'S');
-  addText("CARRIER'S CON NOTE", boxX + 3, boxY + 6, { size: 8, bold: true, color: green });
+  doc.setFillColor(...paleGreen);
+  doc.setDrawColor(190, 220, 200);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(boxX, boxY, boxW, boxH, 2, 2, 'FD');
+  addText("CARRIER'S CON NOTE", boxX + 3, boxY + 6, { size: 8, bold: true, color: leafGreen });
   addText(`Con Note #: ${conNoteText}`, boxX + 3, boxY + 14, { size: 9 });
   addText('Carrier to complete. Photo can be', boxX + 3, boxY + 24, { size: 7, color: mutedText });
-  addText('attached in FreshDock app.', boxX + 3, boxY + 28, { size: 7, color: mutedText });
+  addText('attached in Pack to Produce app.', boxX + 3, boxY + 28, { size: 7, color: mutedText });
 
   y += 8;
 
-  // ── LINE ITEMS TABLE ──
-  doc.setDrawColor(200, 210, 200);
+  // ── LINE ITEMS ──
+  doc.setDrawColor(190, 220, 200);
   doc.setLineWidth(0.3);
   doc.line(margin, y, pageW - margin, y);
   y += 6;
 
-  addText('LINE ITEMS', margin, y, { size: 8, bold: true, color: green });
+  addText('LINE ITEMS', margin, y, { size: 8, bold: true, color: leafGreen });
   y += 6;
 
-  // Table header
   const cols = [
     { label: '#', w: 8, align: 'left' as const },
     { label: 'Product', w: 30, align: 'left' as const },
@@ -182,7 +208,8 @@ export async function generateDeliveryAdvicePDF(dispatchId: string) {
     { label: 'Total Wt (kg)', w: 25, align: 'right' as const },
   ];
 
-  doc.setFillColor(...green);
+  // Header row — leaf green
+  doc.setFillColor(...leafGreen);
   doc.rect(margin, y - 1, contentW, 6, 'F');
 
   let cx = margin;
@@ -190,21 +217,16 @@ export async function generateDeliveryAdvicePDF(dispatchId: string) {
     const tx = col.align === 'right' ? cx + col.w - 1 : cx + 1;
     doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(...white);
     doc.text(col.label, tx, y + 3, { align: col.align === 'right' ? 'right' : 'left' });
     cx += col.w;
   });
   y += 7;
 
-  // Table rows
   (items || []).forEach((item: any, idx: number) => {
-    if (y > 260) {
-      doc.addPage();
-      y = margin;
-    }
-    const isAlt = idx % 2 === 1;
-    if (isAlt) {
-      doc.setFillColor(...lightGreen);
+    if (y > 260) { doc.addPage(); y = margin; }
+    if (idx % 2 === 1) {
+      doc.setFillColor(...paleGreen);
       doc.rect(margin, y - 3, contentW, 6, 'F');
     }
 
@@ -233,11 +255,11 @@ export async function generateDeliveryAdvicePDF(dispatchId: string) {
     y += 6;
   });
 
-  // Totals row
-  doc.setFillColor(220, 230, 225);
+  // Totals row — slightly darker green
+  doc.setFillColor(210, 232, 215);
   doc.rect(margin, y - 3, contentW, 7, 'F');
   const totalCtns = (items || []).reduce((s: number, i: any) => s + i.quantity, 0);
-  const totalWt = (items || []).reduce((s: number, i: any) => s + (i.unit_weight ? i.quantity * i.unit_weight : (i.weight || 0)), 0);
+  const totalWt   = (items || []).reduce((s: number, i: any) => s + (i.unit_weight ? i.quantity * i.unit_weight : (i.weight || 0)), 0);
   addText('TOTAL', margin + 1, y + 1, { size: 8, bold: true });
   let totX = margin;
   cols.forEach((col, i) => {
@@ -256,11 +278,11 @@ export async function generateDeliveryAdvicePDF(dispatchId: string) {
   // ── DECLARATION ──
   if (y > 245) { doc.addPage(); y = margin; }
 
-  doc.setDrawColor(200, 210, 200);
+  doc.setDrawColor(190, 220, 200);
   doc.line(margin, y, pageW - margin, y);
   y += 6;
 
-  addText('DECLARATION', margin, y, { size: 8, bold: true, color: green });
+  addText('DECLARATION', margin, y, { size: 8, bold: true, color: leafGreen });
   y += 5;
   doc.setFontSize(8);
   doc.setFont('helvetica', 'italic');
@@ -270,11 +292,9 @@ export async function generateDeliveryAdvicePDF(dispatchId: string) {
   doc.text(declLines, margin, y);
   y += declLines.length * 4 + 6;
 
-  // Signature table
-  const sigColW = contentW / 3;
   ['GROWER SIGN-OFF', 'CARRIER RECEIPT', 'RECEIVER RECEIPT'].forEach((title, i) => {
-    const sx = margin + i * sigColW;
-    addText(title, sx, y, { size: 7, bold: true, color: green });
+    const sx = margin + i * (contentW / 3);
+    addText(title, sx, y, { size: 7, bold: true, color: leafGreen });
     addText('Signed: _____________', sx, y + 6, { size: 7, color: mutedText });
     addText('Name:   _____________', sx, y + 11, { size: 7, color: mutedText });
     addText('Date:   _____________', sx, y + 16, { size: 7, color: mutedText });
@@ -282,12 +302,14 @@ export async function generateDeliveryAdvicePDF(dispatchId: string) {
   y += 24;
 
   // ── FOOTER ──
-  doc.setDrawColor(...green);
-  doc.setLineWidth(0.3);
-  doc.line(margin, 282, pageW - margin, 282);
-  addText(`Generated by FreshDock · ${format(new Date(), 'dd/MM/yyyy h:mma')} · Scan QR for live status`, margin, 287, { size: 7, color: mutedText });
-  addText(da, pageW - margin, 287, { size: 7, color: mutedText });
+  doc.setFillColor(...leafGreen);
+  doc.rect(0, 284, pageW, 13, 'F');
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...white);
+  doc.text(`Generated by Pack to Produce · ${format(new Date(), 'dd/MM/yyyy h:mma')} · Scan QR for live status`, margin, 290);
+  doc.setTextColor(245, 200, 66);
+  doc.text(da, pageW - margin, 290, { align: 'right' });
 
-  // Save
   doc.save(`${da}.pdf`);
 }

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Rounded square background — leaf green -->
+  <rect width="512" height="512" rx="112" fill="#3a8c4e"/>
+
+  <!-- Subtle radial warmth -->
+  <radialGradient id="warm" cx="50%" cy="30%" r="70%">
+    <stop offset="0%" stop-color="#52b06a" stop-opacity="0.4"/>
+    <stop offset="100%" stop-color="#2a6b3a" stop-opacity="0"/>
+  </radialGradient>
+  <rect width="512" height="512" rx="112" fill="url(#warm)"/>
+
+  <!-- Seedling mark — centred, scaled to fill icon nicely -->
+  <!-- Stem -->
+  <path d="M256 430 L256 200" stroke="rgba(253,250,244,0.55)" stroke-width="18" stroke-linecap="round"/>
+
+  <!-- Left leaf — cream/white (pack/origin) -->
+  <path d="M256 320
+    C256 320 160 295 125 230
+    C115 210 120 185 138 178
+    C160 170 200 188 228 230
+    C246 256 256 295 256 320Z"
+    fill="rgba(253,250,244,0.92)"/>
+
+  <!-- Left leaf vein -->
+  <path d="M256 320 C220 280 165 245 138 185"
+    stroke="rgba(42,107,58,0.3)" stroke-width="5" stroke-linecap="round" fill="none"/>
+
+  <!-- Right leaf — sun gold (produce/destination) -->
+  <path d="M256 265
+    C256 265 350 228 388 163
+    C400 142 396 116 377 110
+    C354 103 315 124 283 165
+    C263 192 256 240 256 265Z"
+    fill="#f5c842"/>
+
+  <!-- Right leaf vein -->
+  <path d="M256 265 C294 225 355 185 378 118"
+    stroke="rgba(92,61,30,0.2)" stroke-width="5" stroke-linecap="round" fill="none"/>
+
+  <!-- Soil shadow ellipse -->
+  <ellipse cx="256" cy="438" rx="72" ry="18" fill="rgba(26,46,29,0.2)"/>
+
+  <!-- Bud at top -->
+  <circle cx="256" cy="190" r="22" fill="#e0a820"/>
+  <circle cx="256" cy="190" r="12" fill="#f5c842"/>
+</svg>

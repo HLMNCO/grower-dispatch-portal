@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 export function useDarkMode() {
   const [isDark, setIsDark] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
-    const stored = localStorage.getItem('freshdock-theme');
+    const stored = localStorage.getItem('p2p-theme');
     if (stored) return stored === 'dark';
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
@@ -12,10 +12,10 @@ export function useDarkMode() {
     const root = document.documentElement;
     if (isDark) {
       root.classList.add('dark');
-      localStorage.setItem('freshdock-theme', 'dark');
+      localStorage.setItem('p2p-theme', 'dark');
     } else {
       root.classList.remove('dark');
-      localStorage.setItem('freshdock-theme', 'light');
+      localStorage.setItem('p2p-theme', 'light');
     }
   }, [isDark]);
 

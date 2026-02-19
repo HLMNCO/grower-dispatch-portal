@@ -208,7 +208,7 @@ export default function PublicSubmitPage() {
         <header className="bg-primary text-primary-foreground py-4">
           <div className="max-w-2xl mx-auto px-4 flex items-center gap-3">
             <Package className="h-6 w-6" />
-            <span className="font-display text-lg tracking-tight">FRESHDOCK</span>
+            <span className="font-display font-bold text-lg tracking-tight">Pack to Produce</span>
           </div>
         </header>
         <div className="max-w-md mx-auto px-4 py-16 text-center">
@@ -228,7 +228,7 @@ export default function PublicSubmitPage() {
         <header className="bg-primary text-primary-foreground py-4">
           <div className="max-w-2xl mx-auto px-4 flex items-center gap-3">
             <Package className="h-6 w-6" />
-            <span className="font-display text-lg tracking-tight">FRESHDOCK</span>
+            <span className="font-display font-bold text-lg tracking-tight">Pack to Produce</span>
           </div>
         </header>
         <div className="max-w-md mx-auto px-4 py-16 text-center">
@@ -279,7 +279,7 @@ export default function PublicSubmitPage() {
       <header className="bg-primary text-primary-foreground py-4">
         <div className="max-w-2xl mx-auto px-4 flex items-center gap-3">
           <Package className="h-6 w-6" />
-          <span className="font-display text-lg tracking-tight">FRESHDOCK</span>
+          <span className="font-display font-bold text-lg tracking-tight">Pack to Produce</span>
         </div>
       </header>
 
@@ -633,7 +633,7 @@ export default function PublicSubmitPage() {
         )}
 
         <p className="text-xs text-center text-muted-foreground pb-6 mt-6">
-          Powered by FreshDock · Sending to {receiverName}
+          Powered by Pack to Produce · Sending to {receiverName}
         </p>
       </div>
     </div>
