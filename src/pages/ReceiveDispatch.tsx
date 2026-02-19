@@ -42,12 +42,14 @@ interface DispatchDetail {
   transporter_con_note_photo_url: string | null;
   pickup_time: string | null;
   supplier_id: string;
+  supplier_business_id: string | null;
   receiver_business_id: string | null;
   transporter_business_id: string | null;
   internal_lot_number: string | null;
   is_split_load: boolean;
   receiving_temperature: number | null;
   receiving_photos: string[] | null;
+  pallet_type: string | null;
 }
 
 interface ItemRow {
@@ -210,7 +212,7 @@ export default function ReceiveDispatch() {
   };
 
   const handleReceive = async (partial = false) => {
-    if (!id || !user) return;
+    if (!id || !user || !dispatch) return;
 
     // Save any pending received qtys first
     const unsavedQtys = Object.entries(receivedQtys).filter(([, val]) => val !== '' && val !== null);
@@ -232,24 +234,112 @@ export default function ReceiveDispatch() {
     }
 
     if (partial) {
-      // Partial receive — split load, more stock coming
-      await supabase.from('dispatches').update({ status: 'partially-received' }).eq('id', id);
+      // === SPLIT RECEIVE LOGIC ===
+      // 1. Mark current dispatch as received-pending-admin with (A) suffix on con note
+      const conNote = dispatch.transporter_con_note_number || '';
+      const conNoteA = conNote.includes('(') ? conNote : `${conNote}(A)`;
+      
+      const hasLot = !!(lotNumber.trim() || dispatch.internal_lot_number);
+      const statusA = hasLot ? 'received' : 'received-pending-admin';
+
+      await supabase.from('dispatches').update({
+        status: statusA,
+        transporter_con_note_number: conNoteA,
+        is_split_load: true,
+      }).eq('id', id);
+
       await supabase.from('dispatch_events').insert({
         dispatch_id: id,
-        event_type: 'partially_received',
+        event_type: 'split_received',
         triggered_by_user_id: user.id,
         triggered_by_role: 'staff',
-        metadata: { 
+        metadata: {
           internal_lot_number: lotNumber.trim() || null,
           received_quantities: receivedQtys,
-          note: 'Split load — awaiting remaining stock',
+          note: 'Split load — Part A received',
+          con_note_suffix: 'A',
         },
       });
+
+      // 2. Calculate remaining quantities for Part B
+      const remainingItems = items
+        .map(item => {
+          const received = typeof receivedQtys[item.id] === 'number' ? (receivedQtys[item.id] as number) : 0;
+          const remaining = item.quantity - received;
+          return { ...item, remaining };
+        })
+        .filter(item => item.remaining > 0);
+
+      // 3. Create a new dispatch clone for Part B
+      const conNoteB = conNote.includes('(') ? conNote.replace(/\([A-Z]\)/, '(B)') : `${conNote}(B)`;
+      const remainingPallets = Math.max(
+        dispatch.total_pallets - Math.ceil(
+          remainingItems.reduce((s, i) => s + i.remaining, 0) / 
+          Math.max(items.reduce((s, i) => s + i.quantity, 0) / dispatch.total_pallets, 1)
+        ),
+        0
+      );
+      const totalRemainingQty = remainingItems.reduce((s, i) => s + i.remaining, 0);
+      const totalOriginalQty = items.reduce((s, i) => s + i.quantity, 0);
+      const palletRatio = totalOriginalQty > 0 ? totalRemainingQty / totalOriginalQty : 0;
+      const partBPallets = Math.max(Math.round(dispatch.total_pallets * palletRatio), remainingItems.length > 0 ? 1 : 0);
+
+      const { data: newDispatch } = await supabase.from('dispatches').insert({
+        supplier_id: dispatch.supplier_id,
+        receiver_business_id: dispatch.receiver_business_id,
+        supplier_business_id: dispatch.supplier_business_id || undefined,
+        transporter_business_id: dispatch.transporter_business_id || undefined,
+        grower_name: dispatch.grower_name,
+        grower_code: dispatch.grower_code || undefined,
+        transporter_con_note_number: conNoteB,
+        carrier: dispatch.carrier || undefined,
+        truck_number: dispatch.truck_number || undefined,
+        dispatch_date: dispatch.dispatch_date,
+        expected_arrival: dispatch.expected_arrival || undefined,
+        estimated_arrival_window_start: dispatch.estimated_arrival_window_start || undefined,
+        estimated_arrival_window_end: dispatch.estimated_arrival_window_end || undefined,
+        temperature_zone: dispatch.temperature_zone || undefined,
+        commodity_class: dispatch.commodity_class || undefined,
+        total_pallets: partBPallets,
+        status: 'pending',
+        is_split_load: true,
+        notes: `Split from ${conNoteA} — remaining stock`,
+        pallet_type: dispatch.pallet_type || undefined,
+      } as any).select('id, display_id').single();
+
+      // 4. Create items for Part B with remaining quantities
+      if (newDispatch && remainingItems.length > 0) {
+        await supabase.from('dispatch_items').insert(
+          remainingItems.map(item => ({
+            dispatch_id: newDispatch.id,
+            product: item.product,
+            variety: item.variety || undefined,
+            size: item.size || undefined,
+            tray_type: item.tray_type || undefined,
+            quantity: item.remaining,
+            unit_weight: item.unit_weight || undefined,
+            weight: item.unit_weight ? item.remaining * item.unit_weight : undefined,
+          }))
+        );
+
+        await supabase.from('dispatch_events').insert({
+          dispatch_id: newDispatch.id,
+          event_type: 'created_from_split',
+          triggered_by_user_id: user.id,
+          triggered_by_role: 'staff',
+          metadata: {
+            source_dispatch_id: id,
+            source_con_note: conNoteA,
+            con_note_suffix: 'B',
+          },
+        });
+      }
+
       toast({
-        title: 'Partial Receive Recorded',
-        description: `${dispatch?.display_id} partially received. Awaiting remaining stock.`,
+        title: 'Split Receive Complete',
+        description: `${conNoteA} received & pending entry. ${conNoteB} created as inbound with ${totalRemainingQty} remaining trays.`,
       });
-      setDispatch(prev => prev ? { ...prev, status: 'partially-received' } : prev);
+      setDispatch(prev => prev ? { ...prev, status: statusA, transporter_con_note_number: conNoteA, is_split_load: true } : prev);
     } else {
       // Full receive — if no lot number, it's "received, pending admin"
       const hasLot = !!(lotNumber.trim() || dispatch?.internal_lot_number);
@@ -351,8 +441,10 @@ export default function ReceiveDispatch() {
             </Link>
             <div className="h-5 w-px bg-border shrink-0 hidden sm:block" />
             <div className="min-w-0">
-              <h1 className="text-sm sm:text-lg font-display tracking-tight truncate">{dispatch.delivery_advice_number || dispatch.display_id}</h1>
-              <p className="text-xs text-muted-foreground truncate">{dispatch.grower_name}</p>
+              <h1 className="text-sm sm:text-lg font-display tracking-tight truncate">
+                {dispatch.carrier ? `${dispatch.carrier} ` : ''}{dispatch.transporter_con_note_number ? `#${dispatch.transporter_con_note_number}` : dispatch.delivery_advice_number || dispatch.display_id}
+              </h1>
+              <p className="text-xs text-muted-foreground truncate">{dispatch.grower_name}{dispatch.delivery_advice_number ? ` · ${dispatch.delivery_advice_number}` : ''}</p>
             </div>
           </div>
           <StatusBadge status={dispatch.status as any} />
