@@ -11,6 +11,7 @@ import {
 import {
   Search, Plus, Sprout, Edit2, Save, X, Copy, CheckCircle2, Link2,
   MessageSquare, Smartphone, Loader2, ChevronDown, ChevronUp,
+  Mail, KeyRound, UserCheck, Eye, EyeOff, Shield,
 } from 'lucide-react';
 import { GrowerScorecard } from '@/components/GrowerScorecard';
 import { NoGrowersEmpty, NoSearchResultsEmpty } from '@/components/EmptyStates';
@@ -35,7 +36,7 @@ interface IntakeLink {
 }
 
 export default function GrowersPage() {
-  const { business } = useAuth();
+  const { business, user } = useAuth();
   const [growers, setGrowers] = useState<Grower[]>([]);
   const [intakeLinks, setIntakeLinks] = useState<Record<string, IntakeLink[]>>({});
   const [loading, setLoading] = useState(true);
@@ -61,6 +62,14 @@ export default function GrowersPage() {
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
+  // Account setup
+  const [setupGrowerId, setSetupGrowerId] = useState<string | null>(null);
+  const [setupMode, setSetupMode] = useState<'invite' | 'password' | null>(null);
+  const [setupEmail, setSetupEmail] = useState('');
+  const [setupPassword, setSetupPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [settingUp, setSettingUp] = useState(false);
+
   useEffect(() => {
     fetchGrowers();
   }, []);
@@ -73,7 +82,6 @@ export default function GrowersPage() {
       .order('name');
     if (data) {
       setGrowers(data);
-      // Fetch intake links for all growers
       const { data: links } = await supabase
         .from('supplier_intake_links')
         .select('id, short_code, grower_name, grower_code, created_at')
@@ -81,7 +89,6 @@ export default function GrowersPage() {
       if (links) {
         const grouped: Record<string, IntakeLink[]> = {};
         for (const link of links) {
-          // Match by grower_code or name
           const match = data.find(g =>
             (g.grower_code && link.grower_code && g.grower_code === link.grower_code) ||
             g.name.toLowerCase() === link.grower_name.toLowerCase()
@@ -128,7 +135,6 @@ export default function GrowersPage() {
       email: editForm.email || null,
     }).eq('id', editingId);
 
-    // Sync profile
     const grower = growers.find(g => g.id === editingId);
     if (grower) {
       await supabase.from('profiles').update({
@@ -155,11 +161,9 @@ export default function GrowersPage() {
     }
     setCreating(true);
 
-    // Create a business record (no owner_id for manually created growers — use admin's ID as placeholder)
-    const user = (await supabase.auth.getUser()).data.user;
-    if (!user) { setCreating(false); return; }
+    const currentUser = (await supabase.auth.getUser()).data.user;
+    if (!currentUser) { setCreating(false); return; }
 
-    // Create a business record so grower appears in Growers tab
     const { data: existing } = await supabase
       .from('businesses')
       .select('id')
@@ -171,7 +175,7 @@ export default function GrowersPage() {
       await supabase.from('businesses').insert({
         name: newName.trim(),
         business_type: 'supplier',
-        owner_id: user.id,
+        owner_id: currentUser.id,
         grower_code: newCode.trim() || null,
         email: newEmail.trim() || null,
         phone: newPhone.trim() || null,
@@ -180,7 +184,6 @@ export default function GrowersPage() {
       });
     }
 
-    // Create intake link
     const { data: linkData, error: linkError } = await supabase
       .from('supplier_intake_links')
       .insert({
@@ -189,7 +192,7 @@ export default function GrowersPage() {
         grower_code: newCode.trim() || null,
         grower_email: newEmail.trim() || null,
         grower_phone: newPhone.trim() || null,
-        created_by: user.id,
+        created_by: currentUser.id,
       })
       .select('short_code')
       .single();
@@ -223,7 +226,7 @@ export default function GrowersPage() {
     if (!business?.public_intake_token) return;
     setGenerating(true);
     setLinkGrowerId(grower.id);
-    const user = (await supabase.auth.getUser()).data.user;
+    const currentUser = (await supabase.auth.getUser()).data.user;
     const { data, error } = await supabase
       .from('supplier_intake_links')
       .insert({
@@ -232,7 +235,7 @@ export default function GrowersPage() {
         grower_code: grower.grower_code || null,
         grower_email: grower.email || null,
         grower_phone: grower.phone || null,
-        created_by: user?.id,
+        created_by: currentUser?.id,
       })
       .select('short_code')
       .single();
@@ -257,6 +260,64 @@ export default function GrowersPage() {
     toast({ title: 'Copied!' });
     setTimeout(() => setCopied(null), 2000);
   };
+
+  const handleSetupAccount = async (grower: Grower) => {
+    if (!setupMode || !setupEmail.trim()) return;
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(setupEmail.trim())) {
+      toast({ title: 'Invalid email', variant: 'destructive' });
+      return;
+    }
+
+    if (setupMode === 'password' && (!setupPassword || setupPassword.length < 6)) {
+      toast({ title: 'Password must be at least 6 characters', variant: 'destructive' });
+      return;
+    }
+
+    setSettingUp(true);
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      if (!session) throw new Error('Not authenticated');
+
+      const payload: Record<string, string | undefined> = {
+        action: setupMode === 'password' ? 'create_with_password' : 'invite',
+        email: setupEmail.trim(),
+        growerName: grower.name,
+        growerCode: grower.grower_code || undefined,
+        businessId: grower.id,
+      };
+      if (setupMode === 'password') {
+        payload.tempPassword = setupPassword;
+      }
+
+      const { data, error } = await supabase.functions.invoke('setup-grower', {
+        body: payload,
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({
+        title: setupMode === 'invite' ? 'Invite sent!' : 'Account created!',
+        description: setupMode === 'invite'
+          ? `${grower.name} will receive an email at ${setupEmail.trim()}`
+          : `${grower.name} can now log in with ${setupEmail.trim()}`,
+      });
+
+      setSetupGrowerId(null);
+      setSetupMode(null);
+      setSetupEmail('');
+      setSetupPassword('');
+      fetchGrowers();
+    } catch (err: any) {
+      toast({ title: 'Setup failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setSettingUp(false);
+    }
+  };
+
+  const isOwnedByAdmin = (grower: Grower) => grower.owner_id === user?.id;
 
   const linkGrowerName = linkGrowerId === 'new' ? newName : growers.find(g => g.id === linkGrowerId)?.name || '';
   const firstName = linkGrowerName.split(' ')[0] || linkGrowerName;
@@ -357,14 +418,24 @@ export default function GrowersPage() {
               const isEditing = editingId === grower.id;
               const isExpanded = expandedId === grower.id;
               const links = intakeLinks[grower.id] || [];
+              const hasOwnAccount = !isOwnedByAdmin(grower);
+              const isSettingUp = setupGrowerId === grower.id;
 
               return (
                 <div key={grower.id}>
+                  {/* Row header */}
                   <div className="flex items-center justify-between gap-3 px-4 py-3">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <Sprout className="h-4 w-4 text-primary shrink-0" />
                       <div className="min-w-0">
-                        <p className="font-medium text-sm truncate">{grower.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm truncate">{grower.name}</p>
+                          {hasOwnAccount && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-display uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+                              <UserCheck className="h-2.5 w-2.5" /> Active
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground truncate">
                           {grower.grower_code || 'No code'} · {grower.region || 'No region'} · {grower.state || ''}
                         </p>
@@ -392,14 +463,165 @@ export default function GrowersPage() {
                     </div>
                   </div>
 
-                  {/* Expanded details / edit */}
+                  {/* Expanded details */}
                   {isExpanded && !isEditing && (
                     <div className="px-4 pb-4 pt-2 border-t border-border/50 bg-muted/20 space-y-4">
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-                        <div><span className="text-xs text-muted-foreground block">Phone</span>{grower.phone || '—'}</div>
-                        <div><span className="text-xs text-muted-foreground block">Email</span>{grower.email || '—'}</div>
-                        <div><span className="text-xs text-muted-foreground block">Intake Links</span>{links.length} created</div>
+                      {/* Info grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                        <div>
+                          <span className="text-xs text-muted-foreground block">Grower Code</span>
+                          <span className="font-medium">{grower.grower_code || '—'}</span>
+                        </div>
+                        <div>
+                          <span className="text-xs text-muted-foreground block">Region</span>
+                          {grower.region || '—'}{grower.state ? `, ${grower.state}` : ''}
+                        </div>
+                        <div>
+                          <span className="text-xs text-muted-foreground block">Phone</span>
+                          {grower.phone || '—'}
+                        </div>
+                        <div>
+                          <span className="text-xs text-muted-foreground block">Email</span>
+                          <span className="truncate block">{grower.email || '—'}</span>
+                        </div>
                       </div>
+
+                      {/* Intake links info */}
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span><Link2 className="h-3 w-3 inline mr-1" />{links.length} intake link{links.length !== 1 ? 's' : ''} created</span>
+                      </div>
+
+                      {/* Account Setup Section */}
+                      <div className="rounded-lg border border-border bg-background p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Shield className="h-4 w-4 text-primary" />
+                            <h4 className="font-display text-sm tracking-tight">Account Setup</h4>
+                          </div>
+                          {hasOwnAccount ? (
+                            <span className="text-xs text-primary font-display flex items-center gap-1">
+                              <UserCheck className="h-3.5 w-3.5" /> Has own account
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No account yet — link only</span>
+                          )}
+                        </div>
+
+                        {!hasOwnAccount && !isSettingUp && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="justify-start h-auto py-3 px-4"
+                              onClick={() => {
+                                setSetupGrowerId(grower.id);
+                                setSetupMode('invite');
+                                setSetupEmail(grower.email || '');
+                              }}
+                            >
+                              <div className="flex items-start gap-3 text-left">
+                                <Mail className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+                                <div>
+                                  <p className="font-display text-xs font-bold">Send Email Invite</p>
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">They'll get a link to set their own password</p>
+                                </div>
+                              </div>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="justify-start h-auto py-3 px-4"
+                              onClick={() => {
+                                setSetupGrowerId(grower.id);
+                                setSetupMode('password');
+                                setSetupEmail(grower.email || '');
+                              }}
+                            >
+                              <div className="flex items-start gap-3 text-left">
+                                <KeyRound className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+                                <div>
+                                  <p className="font-display text-xs font-bold">Set Temporary Password</p>
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">Create their account with a password you give them</p>
+                                </div>
+                              </div>
+                            </Button>
+                          </div>
+                        )}
+
+                        {isSettingUp && setupMode && (
+                          <div className="space-y-3 pt-1">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Email Address *</Label>
+                              <Input
+                                type="email"
+                                value={setupEmail}
+                                onChange={e => setSetupEmail(e.target.value)}
+                                placeholder="grower@email.com"
+                                className="h-9 text-sm"
+                              />
+                            </div>
+                            {setupMode === 'password' && (
+                              <div className="space-y-1.5">
+                                <Label className="text-xs">Temporary Password *</Label>
+                                <div className="relative">
+                                  <Input
+                                    type={showPassword ? 'text' : 'password'}
+                                    value={setupPassword}
+                                    onChange={e => setSetupPassword(e.target.value)}
+                                    placeholder="Min 6 characters"
+                                    className="h-9 text-sm pr-10"
+                                  />
+                                  <button
+                                    type="button"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                  >
+                                    {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                  </button>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground">Give this to the grower so they can log in. They can change it later.</p>
+                              </div>
+                            )}
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                className="h-8 font-display text-xs"
+                                disabled={settingUp}
+                                onClick={() => handleSetupAccount(grower)}
+                              >
+                                {settingUp ? (
+                                  <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Setting up...</>
+                                ) : setupMode === 'invite' ? (
+                                  <><Mail className="h-3.5 w-3.5 mr-1" /> Send Invite</>
+                                ) : (
+                                  <><KeyRound className="h-3.5 w-3.5 mr-1" /> Create Account</>
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 text-xs"
+                                onClick={() => {
+                                  setSetupGrowerId(null);
+                                  setSetupMode(null);
+                                  setSetupEmail('');
+                                  setSetupPassword('');
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {hasOwnAccount && (
+                          <p className="text-xs text-muted-foreground">
+                            This grower has their own account and can log in to submit dispatches, view history, and manage their profile.
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Scorecard */}
                       <GrowerScorecard
                         growerId={grower.id}
                         growerName={grower.name}
