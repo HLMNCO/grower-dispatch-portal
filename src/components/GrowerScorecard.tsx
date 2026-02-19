@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Package, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getGrowingWeekStart } from '@/lib/growingWeek';
+import { format } from 'date-fns';
 
 interface GrowerStats {
   grower_name: string;
@@ -65,6 +67,17 @@ export function GrowerScorecard({ growerId, growerName, growerCode }: {
 
       const totalPallets = dispatches.reduce((s, d) => s + (d.total_pallets || 0), 0);
 
+      // Calculate avg pallets per growing week (Thu→Wed)
+      const weekSet = new Set<string>();
+      dispatches.forEach(d => {
+        const date = d.expected_arrival || d.created_at;
+        if (date) {
+          const gwStart = getGrowingWeekStart(new Date(date));
+          weekSet.add(format(gwStart, 'yyyy-MM-dd'));
+        }
+      });
+      const numWeeks = weekSet.size || 1;
+
       return {
         total,
         received,
@@ -73,7 +86,7 @@ export function GrowerScorecard({ growerId, growerName, growerCode }: {
         totalPallets,
         onTimeRate: received > 0 ? Math.round((onTime / received) * 100) : 0,
         issueRate: total > 0 ? Math.round((issues / total) * 100) : 0,
-        avgPallets: total > 0 ? Math.round(totalPallets / total) : 0,
+        avgPallets: Math.round(totalPallets / numWeeks),
       } as Omit<GrowerStats, 'grower_name' | 'grower_code'>;
     },
     enabled: !!business,
@@ -115,7 +128,7 @@ export function GrowerScorecard({ growerId, growerName, growerCode }: {
         />
         <StatPill
           value={`${stats.avgPallets}p`}
-          label="Avg pallets"
+          label="Avg p/wk"
           good={false}
           warn={false}
         />
