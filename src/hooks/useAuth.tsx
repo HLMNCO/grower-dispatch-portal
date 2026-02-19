@@ -58,39 +58,66 @@ const [role, setRole] = useState<'staff' | 'supplier' | 'transporter' | null>(nu
   const canReceive = role === 'staff'; // all staff can receive
 
   useEffect(() => {
+    let isMounted = true;
+
+    const loadUserData = async (userId: string) => {
+      try {
+        await Promise.all([
+          fetchRole(userId),
+          fetchBusiness(userId),
+          fetchStaffPosition(userId),
+        ]);
+      } catch (e) {
+        console.error('Error loading user data:', e);
+        if (isMounted) {
+          setRoleLoaded(true);
+          setLoading(false);
+        }
+      }
+    };
+
+    // Listener for ONGOING auth changes (does NOT control loading)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
         setRoleLoaded(false);
-        setTimeout(() => {
-          fetchRole(session.user.id);
-          fetchBusiness(session.user.id);
-          fetchStaffPosition(session.user.id);
-        }, 0);
+        setTimeout(() => loadUserData(session.user.id), 0);
       } else {
         setRole(null);
-        setRoleLoaded(false);
+        setRoleLoaded(true);
         setBusiness(null);
         setStaffPosition(null);
         setLoading(false);
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        setRoleLoaded(false);
-        fetchRole(session.user.id);
-        fetchBusiness(session.user.id);
-        fetchStaffPosition(session.user.id);
-      } else {
-        setLoading(false);
+    // INITIAL load (controls loading)
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          await loadUserData(session.user.id);
+        }
+      } catch (e) {
+        console.error('Auth init error:', e);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    initializeAuth();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchRole = async (userId: string) => {
