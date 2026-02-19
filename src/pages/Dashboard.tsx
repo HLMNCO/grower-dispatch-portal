@@ -16,6 +16,11 @@ import SupplierIntakeLinkDialog from '@/components/SupplierIntakeLinkDialog';
 import StaffRequests from '@/components/StaffRequests';
 import { DashboardSkeleton } from '@/components/Skeletons';
 
+interface DispatchItem {
+  product: string;
+  quantity: number;
+}
+
 interface DispatchRow {
   id: string;
   display_id: string;
@@ -34,6 +39,7 @@ interface DispatchRow {
   receiver_business_id: string | null;
   supplier_business_id: string | null;
   truck_number: string | null;
+  items?: DispatchItem[];
 }
 
 const statCards = [
@@ -82,6 +88,21 @@ function TomorrowSummary({ dispatches }: { dispatches: DispatchRow[] }) {
   );
 }
 
+/** Summarise produce items for display */
+function ProduceSummary({ items }: { items?: DispatchItem[] }) {
+  if (!items || items.length === 0) return <span className="text-muted-foreground/50">—</span>;
+  const top = items.slice(0, 2);
+  const rest = items.length - 2;
+  return (
+    <span className="text-xs">
+      {top.map((it, i) => (
+        <span key={i}>{i > 0 ? ', ' : ''}{it.quantity}× {it.product}</span>
+      ))}
+      {rest > 0 && <span className="text-muted-foreground"> +{rest}</span>}
+    </span>
+  );
+}
+
 /** Mobile dispatch card — replaces table rows on small screens */
 function DispatchCard({ dispatch, onClick }: { dispatch: DispatchRow; onClick: () => void }) {
   return (
@@ -92,7 +113,9 @@ function DispatchCard({ dispatch, onClick }: { dispatch: DispatchRow; onClick: (
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono text-muted-foreground">{dispatch.display_id}</span>
+            <span className="text-xs font-mono font-semibold text-foreground">
+              {dispatch.carrier ? `${dispatch.carrier} #${dispatch.transporter_con_note_number}` : `#${dispatch.transporter_con_note_number}`}
+            </span>
             <StatusBadge status={getDisplayStatus(dispatch)} />
           </div>
           <p className="font-medium text-sm truncate">{dispatch.grower_name}</p>
@@ -102,12 +125,17 @@ function DispatchCard({ dispatch, onClick }: { dispatch: DispatchRow; onClick: (
               <span>ETA {format(new Date(dispatch.expected_arrival), 'dd MMM')}</span>
             )}
             <span>{dispatch.total_pallets} plt</span>
-            {!dispatch.internal_lot_number && ['received-pending-admin', 'arrived', 'received'].includes(dispatch.status) && (
-              <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />No lot #
-              </span>
-            )}
           </div>
+          {dispatch.items && dispatch.items.length > 0 && (
+            <div className="mt-1">
+              <ProduceSummary items={dispatch.items} />
+            </div>
+          )}
+          {!dispatch.internal_lot_number && ['received-pending-admin', 'arrived', 'received'].includes(dispatch.status) && (
+            <span className="inline-flex items-center gap-1 text-xs mt-1 text-amber-600 font-medium">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />No lot #
+            </span>
+          )}
         </div>
         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
       </div>
@@ -203,7 +231,7 @@ export default function Dashboard() {
   const fetchDispatches = async () => {
     if (!business) { setLoading(false); return; }
 
-    let query = supabase.from('dispatches').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('dispatches').select('*, dispatch_items(product, quantity)').order('created_at', { ascending: false });
 
     if (business.business_type === 'receiver') {
       query = query.eq('receiver_business_id', business.id);
@@ -212,7 +240,9 @@ export default function Dashboard() {
     }
 
     const { data, error } = await query;
-    if (!error && data) setDispatches(data as unknown as DispatchRow[]);
+    if (!error && data) {
+      setDispatches(data.map((d: any) => ({ ...d, items: d.dispatch_items })) as unknown as DispatchRow[]);
+    }
     setLoading(false);
   };
 
@@ -375,8 +405,9 @@ export default function Dashboard() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-muted/50">
-                          <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">ID</th>
+                          <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Transport / Con Note</th>
                           <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Grower</th>
+                          <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Produce</th>
                           <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Lot #</th>
                           <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">Dispatch</th>
                           <th className="text-left p-3 font-display text-xs uppercase tracking-widest text-muted-foreground">ETA</th>
@@ -389,11 +420,15 @@ export default function Dashboard() {
                         {filtered.map(dispatch => (
                           <tr key={dispatch.id} className="border-t border-border hover:bg-muted/30 cursor-pointer transition-colors"
                             onClick={() => navigate(`/receive/${dispatch.id}`)}>
-                            <td className="p-3 font-display text-xs">{dispatch.display_id}</td>
+                            <td className="p-3">
+                              <div className="font-display font-semibold text-sm">{dispatch.carrier || 'Unknown'}</div>
+                              <div className="text-xs font-mono text-muted-foreground">#{dispatch.transporter_con_note_number}</div>
+                            </td>
                             <td className="p-3">
                               <div className="font-medium">{dispatch.grower_name}</div>
                               <div className="text-xs text-muted-foreground">{dispatch.grower_code || '-'}</div>
                             </td>
+                            <td className="p-3"><ProduceSummary items={dispatch.items} /></td>
                             <td className="p-3 font-display text-xs">
                               {dispatch.internal_lot_number || (
                                 ['received-pending-admin', 'arrived', 'received'].includes(dispatch.status) 
@@ -410,7 +445,7 @@ export default function Dashboard() {
                         ))}
                         {filtered.length === 0 && (
                           <tr>
-                            <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                            <td colSpan={9} className="p-8 text-center text-muted-foreground">
                               {dispatches.length === 0
                                 ? (isSupplier ? 'No dispatches yet. Create your first dispatch!' : 'No incoming dispatches yet. Suppliers will appear here once connected.')
                                 : 'No dispatches match your search.'}
