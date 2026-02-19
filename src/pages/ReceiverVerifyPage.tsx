@@ -21,6 +21,7 @@ interface QueueDispatch {
   status: string;
   internal_lot_number: string | null;
   temperature_zone: string | null;
+  transporter_con_note_number: string;
 }
 
 function getDisplayStatus(d: QueueDispatch) {
@@ -51,7 +52,7 @@ export default function ReceiverVerifyPage() {
     if (!business) return;
     const { data } = await supabase
       .from('dispatches')
-      .select('id, display_id, grower_name, carrier, truck_number, dispatch_date, expected_arrival, total_pallets, status, internal_lot_number, temperature_zone')
+      .select('id, display_id, grower_name, carrier, truck_number, dispatch_date, expected_arrival, total_pallets, status, internal_lot_number, temperature_zone, transporter_con_note_number')
       .eq('receiver_business_id', business.id)
       .in('status', ['pending', 'in-transit', 'arrived', 'received-pending-admin'])
       .order('expected_arrival', { ascending: true, nullsFirst: false });
@@ -66,7 +67,8 @@ export default function ReceiverVerifyPage() {
     return (
       d.grower_name.toLowerCase().includes(q) ||
       d.display_id.toLowerCase().includes(q) ||
-      (d.carrier || '').toLowerCase().includes(q)
+      (d.carrier || '').toLowerCase().includes(q) ||
+      (d.transporter_con_note_number || '').toLowerCase().includes(q)
     );
   });
 
@@ -100,7 +102,7 @@ export default function ReceiverVerifyPage() {
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Filter by grower or ID..."
+            placeholder="Filter by grower, carrier, or con note..."
             className="pl-10"
           />
         </div>
@@ -126,16 +128,16 @@ export default function ReceiverVerifyPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <StatusBadge status={getDisplayStatus(d)} />
-                        <span className="text-xs font-mono text-muted-foreground">{d.display_id}</span>
+                        {d.carrier && (
+                          <span className="text-xs font-display font-bold text-foreground">{d.carrier}</span>
+                        )}
+                        {d.transporter_con_note_number && (
+                          <span className="text-xs font-mono text-muted-foreground">#{d.transporter_con_note_number}</span>
+                        )}
                       </div>
                       <p className="font-medium text-sm truncate">{d.grower_name}</p>
                       <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                         <span className="tabular-nums">{d.total_pallets} plt</span>
-                        {d.carrier && (
-                          <span className="flex items-center gap-1">
-                            <Truck className="h-3 w-3 shrink-0" />{d.carrier}
-                          </span>
-                        )}
                         {d.temperature_zone && (
                           <span className="capitalize">{d.temperature_zone}</span>
                         )}

@@ -28,6 +28,7 @@ interface PlanningDispatch {
   status: string;
   carrier: string | null;
   delivery_advice_number: string | null;
+  transporter_con_note_number: string;
 }
 
 interface PlanningItem {
@@ -70,7 +71,7 @@ export default function InboundPlanning() {
 
     const { data: dispData } = await supabase
       .from('dispatches')
-      .select('id, display_id, grower_name, grower_code, expected_arrival, dispatch_date, total_pallets, status, carrier, delivery_advice_number')
+      .select('id, display_id, grower_name, grower_code, expected_arrival, dispatch_date, total_pallets, status, carrier, delivery_advice_number, transporter_con_note_number')
       .eq('receiver_business_id', business.id)
       .gte('expected_arrival', start)
       .lte('expected_arrival', end)
@@ -447,11 +448,12 @@ export default function InboundPlanning() {
                           <div className="flex items-center gap-3">
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="font-display text-xs">{d.display_id}</span>
+                                {d.carrier && <span className="font-display text-xs font-bold">{d.carrier}</span>}
+                                {d.transporter_con_note_number && <span className="text-xs font-mono text-muted-foreground">#{d.transporter_con_note_number}</span>}
                                 <StatusBadge status={d.status as any} />
                               </div>
                               <div className="text-sm font-medium mt-0.5">{d.grower_name}</div>
-                              <div className="text-xs text-muted-foreground">{d.delivery_advice_number || '-'} · {d.carrier || 'No carrier'}</div>
+                              <div className="text-xs text-muted-foreground">{d.delivery_advice_number || '-'} · {d.total_pallets}p</div>
                             </div>
                           </div>
                           <div className="text-right">
