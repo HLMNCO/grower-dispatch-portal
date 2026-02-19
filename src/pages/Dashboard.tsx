@@ -79,7 +79,15 @@ function TomorrowSummary({ dispatches }: { dispatches: DispatchRow[] }) {
       <div className="divide-y divide-border">
         {tomorrowArrivals.map(d => (
           <div key={d.id} className="flex items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm">
-            <span className="font-medium text-foreground truncate min-w-0 flex-1">{d.grower_name}</span>
+            <div className="min-w-0 flex-1">
+              <span className="font-medium text-foreground truncate block">{d.grower_name}</span>
+              {d.items && d.items.length > 0 && (
+                <span className="text-[10px] sm:text-xs text-muted-foreground">
+                  {d.items.slice(0, 2).map((it, i) => `${it.quantity}× ${it.product}`).join(', ')}
+                  {d.items.length > 2 ? ` +${d.items.length - 2}` : ''}
+                </span>
+              )}
+            </div>
             <span className="text-muted-foreground tabular-nums whitespace-nowrap shrink-0">{d.total_pallets} plt</span>
           </div>
         ))}
