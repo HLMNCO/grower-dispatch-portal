@@ -341,9 +341,9 @@ export default function ReceiveDispatch() {
       });
       setDispatch(prev => prev ? { ...prev, status: statusA, transporter_con_note_number: conNoteA, is_split_load: true } : prev);
     } else {
-      // Full receive — if no lot number, it's "received, pending admin"
+      // Full receive — lot number check takes priority, then issues
       const hasLot = !!(lotNumber.trim() || dispatch?.internal_lot_number);
-      const newStatus = issues.length > 0 ? 'issue' : hasLot ? 'received' : 'received-pending-admin';
+      const newStatus = hasLot ? (issues.length > 0 ? 'issue' : 'received') : 'received-pending-admin';
       await supabase.from('dispatches').update({ status: newStatus }).eq('id', id);
       await supabase.from('dispatch_events').insert({
         dispatch_id: id,
