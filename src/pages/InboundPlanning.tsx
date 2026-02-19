@@ -1,12 +1,21 @@
 import { useState, useEffect, useMemo } from 'react';
-import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, isBefore } from 'date-fns';
-import { ChevronLeft, ChevronRight, Package, Truck, BarChart3, TrendingUp, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { format, addDays, isSameDay, isToday, isBefore } from 'date-fns';
+import { ChevronLeft, ChevronRight, Package, Truck, BarChart3, TrendingUp, AlertTriangle, ArrowLeft, Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Link, useNavigate } from 'react-router-dom';
 import { PlanningSkeletons } from '@/components/Skeletons';
+import {
+  getGrowingWeekStart,
+  getGrowingWeekEnd,
+  getGrowingWeekDays,
+  getGrowingWeekNumber,
+  getGrowingWeekYear,
+  formatGrowingWeek,
+  formatGrowingWeekRange,
+} from '@/lib/growingWeek';
 
 interface PlanningDispatch {
   id: string;
@@ -35,16 +44,19 @@ interface PlanningItem {
 const DOCK_CAPACITY = 40;
 
 export default function InboundPlanning() {
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [weekStart, setWeekStart] = useState(() => getGrowingWeekStart(new Date()));
   const [dispatches, setDispatches] = useState<PlanningDispatch[]>([]);
   const [items, setItems] = useState<PlanningItem[]>([]);
   const [selectedDay, setSelectedDay] = useState<Date | null>(new Date());
   const [loading, setLoading] = useState(true);
+  const [produceFilter, setProduceFilter] = useState<string | null>(null);
   const { business } = useAuth();
   const navigate = useNavigate();
 
-  const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-  const days = useMemo(() => eachDayOfInterval({ start: weekStart, end: weekEnd }), [weekStart]);
+  const weekEnd = getGrowingWeekEnd(weekStart);
+  const days = useMemo(() => getGrowingWeekDays(weekStart), [weekStart]);
+  const gwNumber = getGrowingWeekNumber(weekStart);
+  const gwYear = getGrowingWeekYear(weekStart);
 
   useEffect(() => {
     if (business) fetchData();
@@ -80,14 +92,37 @@ export default function InboundPlanning() {
     setLoading(false);
   };
 
+  // All unique produce lines for the filter
+  const allProduceLines = useMemo(() => {
+    const set = new Set(items.map(i => i.product));
+    return Array.from(set).sort();
+  }, [items]);
+
+  // Filter dispatches by produce line if active
+  const filteredDispatchIds = useMemo(() => {
+    if (!produceFilter) return null;
+    const ids = new Set(items.filter(i => i.product === produceFilter).map(i => i.dispatch_id));
+    return ids;
+  }, [produceFilter, items]);
+
+  const filteredDispatches = useMemo(() => {
+    if (!filteredDispatchIds) return dispatches;
+    return dispatches.filter(d => filteredDispatchIds.has(d.id));
+  }, [dispatches, filteredDispatchIds]);
+
+  const filteredItems = useMemo(() => {
+    if (!produceFilter) return items;
+    return items.filter(i => i.product === produceFilter);
+  }, [items, produceFilter]);
+
   const getDispatchesForDay = (day: Date) =>
-    dispatches.filter(d => d.expected_arrival && isSameDay(new Date(d.expected_arrival), day));
+    filteredDispatches.filter(d => d.expected_arrival && isSameDay(new Date(d.expected_arrival), day));
 
   const getDayStats = (day: Date) => {
     const dayDisps = getDispatchesForDay(day);
     const pallets = dayDisps.reduce((s, d) => s + d.total_pallets, 0);
     const dayItemIds = new Set(dayDisps.map(d => d.id));
-    const dayItems = items.filter(i => dayItemIds.has(i.dispatch_id));
+    const dayItems = filteredItems.filter(i => dayItemIds.has(i.dispatch_id));
     const totalUnits = dayItems.reduce((s, i) => s + i.quantity, 0);
     const growers = new Set(dayDisps.map(d => d.grower_name)).size;
     const issues = dayDisps.filter(d => d.status === 'issue').length;
@@ -96,7 +131,7 @@ export default function InboundPlanning() {
 
   const selectedDayDispatches = selectedDay ? getDispatchesForDay(selectedDay) : [];
   const selectedDayItemIds = new Set(selectedDayDispatches.map(d => d.id));
-  const selectedDayItems = items.filter(i => selectedDayItemIds.has(i.dispatch_id));
+  const selectedDayItems = filteredItems.filter(i => selectedDayItemIds.has(i.dispatch_id));
 
   const productBreakdown = useMemo(() => {
     const map = new Map<string, { product: string; size: string; variety: string; trayType: string; totalQty: number; totalWeight: number; unitWeight: number | null }>();
@@ -126,7 +161,7 @@ export default function InboundPlanning() {
     const map = new Map<string, { name: string; code: string; pallets: number; dispatches: number; items: number }>();
     selectedDayDispatches.forEach(d => {
       const existing = map.get(d.grower_name);
-      const dItems = items.filter(i => i.dispatch_id === d.id);
+      const dItems = filteredItems.filter(i => i.dispatch_id === d.id);
       const itemCount = dItems.reduce((s, i) => s + i.quantity, 0);
       if (existing) {
         existing.pallets += d.total_pallets;
@@ -143,17 +178,24 @@ export default function InboundPlanning() {
       }
     });
     return Array.from(map.values()).sort((a, b) => b.pallets - a.pallets);
-  }, [selectedDayDispatches, items]);
+  }, [selectedDayDispatches, filteredItems]);
 
   const weeklyStats = useMemo(() => {
-    const totalPallets = dispatches.reduce((s, d) => s + d.total_pallets, 0);
-    const totalUnits = items.reduce((s, i) => s + i.quantity, 0);
-    const totalDispatches = dispatches.length;
-    const uniqueGrowers = new Set(dispatches.map(d => d.grower_name)).size;
+    const totalPallets = filteredDispatches.reduce((s, d) => s + d.total_pallets, 0);
+    const totalUnits = filteredItems.reduce((s, i) => s + i.quantity, 0);
+    const totalDispatches = filteredDispatches.length;
+    const uniqueGrowers = new Set(filteredDispatches.map(d => d.grower_name)).size;
     return { totalPallets, totalUnits, totalDispatches, uniqueGrowers };
-  }, [dispatches, items]);
+  }, [filteredDispatches, filteredItems]);
 
   const selectedStats = selectedDay ? getDayStats(selectedDay) : null;
+
+  const prevWeek = () => setWeekStart(addDays(weekStart, -7));
+  const nextWeek = () => setWeekStart(addDays(weekStart, 7));
+  const goToThisWeek = () => {
+    setWeekStart(getGrowingWeekStart(new Date()));
+    setSelectedDay(new Date());
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -173,23 +215,59 @@ export default function InboundPlanning() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* Week Nav */}
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-lg tracking-tight">
-            {format(weekStart, 'd MMM')} — {format(weekEnd, 'd MMM yyyy')}
-          </h2>
+        {/* Growing Week Nav */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-primary/10 text-primary font-display text-sm font-bold tracking-wide">
+                GW{gwNumber}
+              </span>
+              <h2 className="font-display text-lg tracking-tight">
+                {format(weekStart, 'd MMM')} — {format(weekEnd, 'd MMM yyyy')}
+              </h2>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">Growing week runs Thursday → Wednesday</p>
+          </div>
           <div className="flex gap-1">
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setWeekStart(addDays(weekStart, -7))}>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={prevWeek}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs font-display" onClick={() => { setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 })); setSelectedDay(new Date()); }}>
+            <Button variant="outline" size="sm" className="h-8 text-xs font-display" onClick={goToThisWeek}>
               This Week
             </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setWeekStart(addDays(weekStart, 7))}>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={nextWeek}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
+
+        {/* Produce Line Filter */}
+        {allProduceLines.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground font-display uppercase tracking-wider">Produce:</span>
+            <Button
+              variant={produceFilter === null ? 'default' : 'outline'}
+              size="sm"
+              className="h-7 text-xs font-display"
+              onClick={() => setProduceFilter(null)}
+            >
+              All
+            </Button>
+            {allProduceLines.map(line => (
+              <Button
+                key={line}
+                variant={produceFilter === line ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-xs font-display"
+                onClick={() => setProduceFilter(produceFilter === line ? null : line)}
+              >
+                {line}
+                {produceFilter === line && <X className="h-3 w-3 ml-1" />}
+              </Button>
+            ))}
+          </div>
+        )}
 
         {/* Weekly Summary Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -214,7 +292,10 @@ export default function InboundPlanning() {
             {/* Daily Capacity Bars */}
             <div className="rounded-lg border border-border bg-card overflow-hidden">
               <div className="p-3 border-b border-border bg-muted/30">
-                <h3 className="font-display text-xs uppercase tracking-widest text-muted-foreground">Daily Pallet Forecast</h3>
+                <h3 className="font-display text-xs uppercase tracking-widest text-muted-foreground">
+                  Daily Pallet Forecast · GW{gwNumber}
+                  {produceFilter && <span className="text-primary ml-1">· {produceFilter}</span>}
+                </h3>
               </div>
               <div className="overflow-x-auto">
               <div className="grid grid-cols-7 divide-x divide-border min-w-[480px]">
