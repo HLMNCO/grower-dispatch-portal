@@ -239,8 +239,8 @@ export default function GrowersPage() {
 
   const linkGrowerName = linkGrowerId === 'new' ? newName : growers.find(g => g.id === linkGrowerId)?.name || '';
   const firstName = linkGrowerName.split(' ')[0] || linkGrowerName;
-  const whatsappMsg = `Hi ${firstName}, Ten Farms has set you up on FreshDock. Next time you're sending us produce, just tap this link to let us know what's coming — takes about a minute: ${generatedUrl}`;
-  const smsMsg = `Hi ${firstName}, tap here to send your next delivery to Ten Farms: ${generatedUrl}`;
+  const whatsappMsg = `Hi ${firstName}, you've been set up on Pack to Produce. Next time you're sending us produce, just tap this link to let us know what's coming — takes about a minute: ${generatedUrl}`;
+  const smsMsg = `Hi ${firstName}, tap here to send your next delivery: ${generatedUrl}`;
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">

@@ -3,14 +3,45 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { toast as sonnerToast } from 'sonner';
 import {
-  Package, Plus, ClipboardList, FileText, Settings, LogOut,
+  Plus, ClipboardList, FileText, Settings, LogOut,
   LayoutDashboard, CheckCircle2, CalendarDays, Users, Menu, X,
-  BarChart3, ClipboardCheck, Home, Moon, Sun
+  ClipboardCheck, Home, Moon, Sun
 } from 'lucide-react';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import SupplierIntakeLinkDialog from '@/components/SupplierIntakeLinkDialog';
+
+/** Seedling mark — inline SVG so no external dep needed */
+function SeedlingMark({ size = 28, onDark = true }: { size?: number; onDark?: boolean }) {
+  const green = onDark ? 'rgba(253,250,244,0.92)' : '#3a8c4e';
+  const stem  = onDark ? 'rgba(253,250,244,0.5)'  : 'rgba(42,107,58,0.5)';
+  return (
+    <svg width={size} height={Math.round(size * 1.1)} viewBox="0 0 100 110" fill="none">
+      <path d="M50 100 L50 45" stroke={stem} strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M50 70 C50 70 30 65 22 50 C20 46 21 40 25 38 C30 36 38 40 44 50 C48 57 50 65 50 70Z" fill={green} />
+      <path d="M50 58 C50 58 68 50 78 36 C81 31 80 25 76 23 C71 21 63 26 57 36 C53 43 50 52 50 58Z" fill="#f5c842" />
+      <ellipse cx="50" cy="102" rx="14" ry="3.5" fill={onDark ? 'rgba(253,250,244,0.1)' : 'rgba(92,61,30,0.1)'} />
+      <circle cx="50" cy="42" r="4" fill="#e0a820" />
+    </svg>
+  );
+}
+
+/** Inline wordmark */
+function Wordmark({ onDark = true, size = 'sm' }: { onDark?: boolean; size?: 'sm' | 'md' }) {
+  const textColor = onDark ? '#fdfaf4' : '#1a2e1d';
+  const goldColor = '#f5c842';
+  const monoColor = onDark ? 'rgba(253,250,244,0.4)' : 'rgba(107,128,112,0.8)';
+  const fontSize = size === 'md' ? '1.1rem' : '0.875rem';
+  const monoSize = size === 'md' ? '0.55rem' : '0.48rem';
+  return (
+    <span style={{ display: 'flex', alignItems: 'baseline', gap: '5px' }}>
+      <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize, letterSpacing: '-0.02em', color: textColor }}>Pack</span>
+      <span style={{ fontFamily: '"Space Mono", monospace', fontWeight: 400, fontSize: monoSize, letterSpacing: '0.18em', textTransform: 'uppercase', color: monoColor }}>to</span>
+      <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize, letterSpacing: '-0.02em', color: goldColor }}>Produce</span>
+    </span>
+  );
+}
 
 function NavItem({ to, icon: Icon, label, active, onClick }: {
   to: string; icon: any; label: string; active: boolean; onClick?: () => void;
@@ -18,7 +49,7 @@ function NavItem({ to, icon: Icon, label, active, onClick }: {
   return (
     <Link to={to} onClick={onClick}
       className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors min-h-[44px]",
+        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors min-h-[44px]",
         active
           ? "bg-sidebar-accent text-sidebar-accent-foreground"
           : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
@@ -29,45 +60,50 @@ function NavItem({ to, icon: Icon, label, active, onClick }: {
   );
 }
 
+function SidebarHeader({ businessName }: { businessName?: string }) {
+  return (
+    <div className="px-4 py-5 border-b border-sidebar-border">
+      <div className="flex items-center gap-2.5">
+        <SeedlingMark size={26} onDark />
+        <Wordmark onDark />
+      </div>
+      {businessName && (
+        <p className="text-xs text-sidebar-foreground/45 mt-2 truncate">{businessName}</p>
+      )}
+    </div>
+  );
+}
+
 function SupplierSidebar({ onClose }: { onClose?: () => void }) {
   const { business, signOut } = useAuth();
   const { pathname } = useLocation();
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 py-5 border-b border-sidebar-border">
-        <div className="flex items-center gap-2.5">
-          <div className="p-1.5 rounded-lg bg-sidebar-primary">
-            <Package className="h-4 w-4 text-sidebar-primary-foreground" />
-          </div>
-          <span className="font-display text-sm tracking-tight text-sidebar-foreground">FRESHDOCK</span>
-        </div>
-        {business && (
-          <p className="text-xs text-sidebar-foreground/50 mt-1.5 truncate">{business.name}</p>
-        )}
-      </div>
+      <SidebarHeader businessName={business?.name} />
 
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         <NavItem to="/dispatch" icon={LayoutDashboard} label="Home" active={pathname === '/dispatch'} onClick={onClose} />
         <Link to="/dispatch/new" onClick={onClose}>
-          <Button className="w-full font-display tracking-wide mt-2 mb-2 min-h-[44px]" size="sm">
-            <Plus className="h-4 w-4 mr-2" /> New Delivery
+          <Button className="w-full font-display font-bold tracking-wide mt-2 mb-2 min-h-[44px] bg-accent hover:bg-accent/90 text-accent-foreground" size="sm">
+            <Plus className="h-4 w-4 mr-2" /> New Dispatch
           </Button>
         </Link>
         <div className="h-px bg-sidebar-border my-3" />
-        <NavItem to="/dispatch" icon={ClipboardList} label="My Deliveries" active={false} onClick={onClose} />
+        <NavItem to="/dispatch" icon={ClipboardList} label="My Dispatches" active={false} onClick={onClose} />
         <NavItem to="/supplier/templates" icon={FileText} label="Templates" active={pathname === '/supplier/templates'} onClick={onClose} />
       </div>
 
       <div className="px-3 py-4 border-t border-sidebar-border space-y-1">
         <button onClick={() => sonnerToast.info("Settings coming soon")}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 w-full min-h-[44px]">
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 w-full min-h-[44px]">
           <Settings className="h-4 w-4" /> Settings
         </button>
         <button onClick={signOut}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 w-full min-h-[44px]">
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 w-full min-h-[44px]">
           <LogOut className="h-4 w-4" /> Sign Out
         </button>
+        <DarkModeToggle />
       </div>
     </div>
   );
@@ -79,18 +115,10 @@ function ReceiverSidebar({ onClose }: { onClose?: () => void }) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 py-5 border-b border-sidebar-border">
-        <div className="flex items-center gap-2.5">
-          <div className="p-1.5 rounded-lg bg-sidebar-primary">
-            <Package className="h-4 w-4 text-sidebar-primary-foreground" />
-          </div>
-          <span className="font-display text-sm tracking-tight text-sidebar-foreground">FRESHDOCK</span>
-        </div>
-        <p className="text-xs text-sidebar-foreground/50 mt-1.5">Ten Farms Receiving</p>
-      </div>
+      <SidebarHeader />
 
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        <NavItem to="/" icon={LayoutDashboard} label="Receiving Dashboard" active={pathname === '/'} onClick={onClose} />
+        <NavItem to="/" icon={LayoutDashboard} label="Dashboard" active={pathname === '/'} onClick={onClose} />
         <NavItem to="/receiver/verify" icon={CheckCircle2} label="Receive Produce" active={pathname === '/receiver/verify'} onClick={onClose} />
         {canPlan && (
           <NavItem to="/planning" icon={CalendarDays} label="Inbound Planning" active={pathname === '/planning'} onClick={onClose} />
@@ -106,11 +134,11 @@ function ReceiverSidebar({ onClose }: { onClose?: () => void }) {
 
       <div className="px-3 py-4 border-t border-sidebar-border space-y-1">
         <button onClick={() => sonnerToast.info("Settings coming soon")}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 w-full min-h-[44px]">
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 w-full min-h-[44px]">
           <Settings className="h-4 w-4" /> Settings
         </button>
         <button onClick={signOut}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 w-full min-h-[44px]">
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 w-full min-h-[44px]">
           <LogOut className="h-4 w-4" /> Sign Out
         </button>
         <DarkModeToggle />
@@ -119,7 +147,6 @@ function ReceiverSidebar({ onClose }: { onClose?: () => void }) {
   );
 }
 
-/** Mobile bottom tab bar — primary navigation */
 function MobileBottomNav() {
   const { role, business, canPlan } = useAuth();
   const { pathname } = useLocation();
@@ -150,7 +177,7 @@ function MobileBottomNav() {
             key={tab.to}
             to={tab.to}
             className={cn(
-              "flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-display uppercase tracking-wider transition-colors",
+              "flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-display font-bold uppercase tracking-wider transition-colors",
               tab.active ? "text-primary" : "text-muted-foreground"
             )}
           >
@@ -166,7 +193,6 @@ function MobileBottomNav() {
             )}
           </Link>
         ))}
-        {/* Receiver intake link as extra tab */}
         {isReceiver && business?.public_intake_token && (
           <div className="flex-1 flex flex-col items-center justify-center gap-0.5">
             <SupplierIntakeLinkDialog intakeToken={business.public_intake_token} compact />
@@ -226,21 +252,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <Menu className="h-5 w-5" />
           </Button>
           <div className="flex items-center gap-2 flex-1">
-            <div className="p-1.5 rounded-lg bg-primary">
-              <Package className="h-3.5 w-3.5 text-primary-foreground" />
-            </div>
-            <span className="font-display text-sm tracking-tight">FRESHDOCK</span>
+            <SeedlingMark size={24} onDark={false} />
+            <Wordmark onDark={false} />
           </div>
           <DarkModeToggle />
         </header>
 
-        {/* Page content — extra bottom padding for mobile nav bar */}
+        {/* Page content */}
         <main className="flex-1 pb-[72px] lg:pb-0">
           {children}
         </main>
       </div>
 
-      {/* Mobile bottom tab bar */}
       <MobileBottomNav />
     </div>
   );

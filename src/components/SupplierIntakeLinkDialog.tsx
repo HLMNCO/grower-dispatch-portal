@@ -27,7 +27,7 @@ export default function SupplierIntakeLinkDialog({ intakeToken, compact }: Props
 
   const generateLink = async () => {
     if (!growerName.trim()) {
-      toast({ title: 'Missing field', description: 'Enter the grower\'s business name', variant: 'destructive' });
+      toast({ title: 'Missing field', description: "Enter the grower's business name", variant: 'destructive' });
       return;
     }
 
@@ -68,8 +68,9 @@ export default function SupplierIntakeLinkDialog({ intakeToken, compact }: Props
     setTimeout(() => setCopied(null), 2000);
   };
 
-  const whatsappMsg = `Hi ${firstName}, Ten Farms has set you up on FreshDock. Next time you're sending us produce, just tap this link to let us know what's coming — takes about a minute: ${generatedUrl}`;
-  const smsMsg = `Hi ${firstName}, tap here to send your next delivery to Ten Farms: ${generatedUrl}`;
+  // Updated messaging — Pack to Produce branding
+  const whatsappMsg = `Hi ${firstName}, you've been set up on Pack to Produce. Next time you're sending us produce, just tap this link to let us know what's coming — takes about a minute: ${generatedUrl}`;
+  const smsMsg = `Hi ${firstName}, tap here to send your next delivery: ${generatedUrl}`;
 
   const resetForm = () => {
     setGrowerName('');
@@ -84,19 +85,19 @@ export default function SupplierIntakeLinkDialog({ intakeToken, compact }: Props
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
       <DialogTrigger asChild>
         {compact ? (
-          <button className="flex flex-col items-center justify-center gap-0.5 text-[10px] font-display uppercase tracking-wider text-muted-foreground w-full h-full">
+          <button className="flex flex-col items-center justify-center gap-0.5 text-[10px] font-display font-bold uppercase tracking-wider text-muted-foreground w-full h-full">
             <Link2 className="h-5 w-5" />
             <span>Intake</span>
           </button>
         ) : (
-          <Button size="sm" variant="outline" className="font-display tracking-wide">
+          <Button size="sm" variant="outline" className="font-display font-bold tracking-wide">
             <Link2 className="h-4 w-4 mr-1" /> Grower Submission Link
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-display tracking-tight">Grower Submission Link</DialogTitle>
+          <DialogTitle className="font-display font-bold tracking-tight">Grower Submission Link</DialogTitle>
           {growerName && generatedUrl && (
             <DialogDescription className="text-sm font-medium text-foreground">{growerName}</DialogDescription>
           )}
@@ -112,11 +113,11 @@ export default function SupplierIntakeLinkDialog({ intakeToken, compact }: Props
             <div className="space-y-3 pt-2">
               <div>
                 <label className="text-sm font-medium mb-1 block">Grower Business Name *</label>
-                <Input value={growerName} onChange={e => setGrowerName(e.target.value)} placeholder="e.g. Sats Bananas" className="h-11" />
+                <Input value={growerName} onChange={e => setGrowerName(e.target.value)} placeholder="e.g. Valley Fresh Farms" className="h-11" />
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">Grower Code</label>
-                <Input value={growerCode} onChange={e => setGrowerCode(e.target.value)} placeholder="e.g. SAT-001" className="h-11" />
+                <Input value={growerCode} onChange={e => setGrowerCode(e.target.value)} placeholder="e.g. VFF-042" className="h-11" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -129,40 +130,45 @@ export default function SupplierIntakeLinkDialog({ intakeToken, compact }: Props
                 </div>
               </div>
             </div>
-            <Button onClick={generateLink} className="w-full mt-4 h-11 font-display tracking-wide" disabled={generating}>
-              {generating ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating...</> : <><Copy className="h-4 w-4 mr-2" /> Generate & Copy Link</>}
+            <Button onClick={generateLink} className="w-full mt-4 h-11 font-display font-bold tracking-wide" disabled={generating}>
+              {generating
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating...</>
+                : <><Copy className="h-4 w-4 mr-2" /> Generate & Copy Link</>}
             </Button>
           </>
         ) : (
           <div className="space-y-4 pt-2">
-            {/* Link copy box */}
             <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
               <p className="text-xs text-muted-foreground mb-1">Submission link</p>
               <p className="text-sm font-mono font-medium text-primary break-all">{generatedUrl}</p>
             </div>
             <Button variant="outline" size="sm" className="w-full" onClick={() => copyText(generatedUrl, 'link')}>
-              {copied === 'link' ? <><CheckCircle2 className="h-4 w-4 mr-1.5 text-primary" /> Copied</> : <><Copy className="h-4 w-4 mr-1.5" /> Copy Link</>}
+              {copied === 'link'
+                ? <><CheckCircle2 className="h-4 w-4 mr-1.5 text-primary" /> Copied</>
+                : <><Copy className="h-4 w-4 mr-1.5" /> Copy Link</>}
             </Button>
 
-            {/* WhatsApp message */}
             <div className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-display text-muted-foreground uppercase tracking-wider">
+              <div className="flex items-center gap-1.5 text-xs font-display font-bold text-muted-foreground uppercase tracking-wider">
                 <MessageSquare className="h-3.5 w-3.5" /> WhatsApp Message
               </div>
               <p className="text-sm text-foreground/80">{whatsappMsg}</p>
               <Button variant="outline" size="sm" onClick={() => copyText(whatsappMsg, 'whatsapp')}>
-                {copied === 'whatsapp' ? <><CheckCircle2 className="h-4 w-4 mr-1.5 text-primary" /> Copied</> : <><Copy className="h-4 w-4 mr-1.5" /> Copy WhatsApp Message</>}
+                {copied === 'whatsapp'
+                  ? <><CheckCircle2 className="h-4 w-4 mr-1.5 text-primary" /> Copied</>
+                  : <><Copy className="h-4 w-4 mr-1.5" /> Copy WhatsApp Message</>}
               </Button>
             </div>
 
-            {/* SMS message */}
             <div className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-display text-muted-foreground uppercase tracking-wider">
+              <div className="flex items-center gap-1.5 text-xs font-display font-bold text-muted-foreground uppercase tracking-wider">
                 <Smartphone className="h-3.5 w-3.5" /> SMS Message
               </div>
               <p className="text-sm text-foreground/80">{smsMsg}</p>
               <Button variant="outline" size="sm" onClick={() => copyText(smsMsg, 'sms')}>
-                {copied === 'sms' ? <><CheckCircle2 className="h-4 w-4 mr-1.5 text-primary" /> Copied</> : <><Copy className="h-4 w-4 mr-1.5" /> Copy SMS Message</>}
+                {copied === 'sms'
+                  ? <><CheckCircle2 className="h-4 w-4 mr-1.5 text-primary" /> Copied</>
+                  : <><Copy className="h-4 w-4 mr-1.5" /> Copy SMS Message</>}
               </Button>
             </div>
 
