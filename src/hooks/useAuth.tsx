@@ -135,10 +135,11 @@ const [role, setRole] = useState<'staff' | 'supplier' | 'transporter' | null>(nu
     const { data } = await supabase
       .from('businesses')
       .select('id, name, business_type, public_intake_token, grower_code')
-      .eq('owner_id', userId)
-      .maybeSingle();
-    if (data) {
-      setBusiness(data as Business);
+      .eq('owner_id', userId);
+    if (data && data.length > 0) {
+      // Prefer receiver business for staff, supplier for supplier role
+      const preferred = data.find(b => b.business_type === 'receiver') || data[0];
+      setBusiness(preferred as Business);
     }
   };
 

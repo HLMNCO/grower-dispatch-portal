@@ -197,6 +197,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (business) fetchDispatches();
+    else setLoading(false);
   }, [business]);
 
   const fetchDispatches = async () => {
