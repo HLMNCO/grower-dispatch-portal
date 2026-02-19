@@ -33,6 +33,10 @@ export default function SupplierIntakeLinkDialog({ intakeToken, compact }: Props
 
     setGenerating(true);
     try {
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) throw new Error('Not authenticated');
+
+      // Create intake link
       const { data, error } = await supabase
         .from('supplier_intake_links')
         .insert({
@@ -41,12 +45,32 @@ export default function SupplierIntakeLinkDialog({ intakeToken, compact }: Props
           grower_code: growerCode.trim() || null,
           grower_email: growerEmail.trim() || null,
           grower_phone: growerPhone.trim() || null,
-          created_by: (await supabase.auth.getUser()).data.user?.id,
+          created_by: user.id,
         })
         .select('short_code')
         .single();
 
       if (error) throw error;
+
+      // Also create a business record so grower appears in Growers tab
+      // Check if one already exists with the same name
+      const { data: existing } = await supabase
+        .from('businesses')
+        .select('id')
+        .eq('business_type', 'supplier')
+        .ilike('name', growerName.trim())
+        .maybeSingle();
+
+      if (!existing) {
+        await supabase.from('businesses').insert({
+          name: growerName.trim(),
+          business_type: 'supplier',
+          owner_id: user.id,
+          grower_code: growerCode.trim() || null,
+          email: growerEmail.trim() || null,
+          phone: growerPhone.trim() || null,
+        });
+      }
 
       const url = `${window.location.origin}/s/${data.short_code}`;
       setGeneratedUrl(url);

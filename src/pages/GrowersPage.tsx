@@ -159,7 +159,28 @@ export default function GrowersPage() {
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) { setCreating(false); return; }
 
-    // Create intake link directly (no account needed)
+    // Create a business record so grower appears in Growers tab
+    const { data: existing } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('business_type', 'supplier')
+      .ilike('name', newName.trim())
+      .maybeSingle();
+
+    if (!existing) {
+      await supabase.from('businesses').insert({
+        name: newName.trim(),
+        business_type: 'supplier',
+        owner_id: user.id,
+        grower_code: newCode.trim() || null,
+        email: newEmail.trim() || null,
+        phone: newPhone.trim() || null,
+        region: newRegion.trim() || null,
+        state: newState.trim() || null,
+      });
+    }
+
+    // Create intake link
     const { data: linkData, error: linkError } = await supabase
       .from('supplier_intake_links')
       .insert({
